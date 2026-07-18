@@ -187,6 +187,15 @@ docs/screenshots/     README 截图及占位图
 - 不把图片、密钥、对话内容或隐私数据加入日志和诊断报告。
 - 新功能应包含对应测试，并确保 `npm test` 与 `npm run build` 通过。
 
+## 致谢
+
+感谢以下开源项目及其维护者为 Codex 主题与换肤工具生态所做的探索和贡献，也为本项目的设计与实现提供了宝贵参考：
+
+- [Fei-Away/Codex-Dream-Skin](https://github.com/Fei-Away/Codex-Dream-Skin)
+- [Finderchangchang/codex-autoskin](https://github.com/Finderchangchang/codex-autoskin)
+
+请尊重这些项目各自的许可证、版权声明与使用边界。本致谢仅表示对开源贡献的认可，不代表上述项目与 Codex Themes Desktop 或 OpenAI 存在官方合作、认可或背书关系。
+
 ## 许可证与声明
 
 源代码采用 [MIT License](LICENSE) 发布。第三方依赖及主题素材可能适用各自的许可证；MIT License 不自动授予任何图片、人物肖像、商标或品牌素材的使用权。
