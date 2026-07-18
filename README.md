@@ -36,19 +36,19 @@ Codex Themes Desktop 是一款面向 macOS 的图形化 Codex 主题管理工具
 
 打开 Codex Themes Desktop 后，可以从统一侧边栏进入主题发现、主题管理、主题创建和设置页面，并一键前往在线主题商城。
 
-![Codex Themes Desktop 软件总览与在线主题商城](docs/screenshots/codex-themes-desktop-overview.png)
+![Codex Themes Desktop 软件总览与在线主题商城](https://raw.githubusercontent.com/NBchitu/CodexThemes-App/main/docs/screenshots/codex-themes-desktop-overview.png)
 
 ### 本地主题管理
 
 “My Themes”集中展示内置主题和本地导入主题。用户可以打开主题目录、导入解压后的主题文件夹，并选择主题应用到 Codex。
 
-![Codex Themes Desktop 本地主题管理界面](docs/screenshots/codex-themes-theme-library.png)
+![Codex Themes Desktop 本地主题管理界面](https://raw.githubusercontent.com/NBchitu/CodexThemes-App/main/docs/screenshots/codex-themes-theme-library.png)
 
 ### 创建主题引导
 
 “Create”页面把主题制作拆成准备图片与指南、发送给 Codex、导入并应用三个步骤，即使不熟悉配置文件也能跟随完成。
 
-![Codex Themes Desktop 创建 Codex 主题引导页面](docs/screenshots/codex-themes-create-theme-guide.png)
+![Codex Themes Desktop 创建 Codex 主题引导页面](https://raw.githubusercontent.com/NBchitu/CodexThemes-App/main/docs/screenshots/codex-themes-create-theme-guide.png)
 
 ## 它能做什么
 
