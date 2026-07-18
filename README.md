@@ -5,7 +5,8 @@
 </p>
 
 <p align="center">
-  <a href="https://codex.cms.app">官方主题商城</a> ·
+  <a href="https://codexthemes.app/">官方主题商城</a> ·
+  <a href="#下载-codex-themes-desktop">下载软件</a> ·
   <a href="#快速上手">快速上手</a> ·
   <a href="#为-codex-制作自己的主题">制作主题</a> ·
   <a href="#本地开发">本地开发</a>
@@ -15,21 +16,43 @@
 
 Codex Themes Desktop 是一款面向 macOS 的图形化 Codex 主题管理工具。它把主题商城、本地主题库、主题导入、主题切换和恢复官方外观集中到一个简单界面中。应用通过仅绑定本机回环地址的 Chrome DevTools Protocol（CDP）加载主题，不修改 Codex 官方应用包、`app.asar` 或代码签名。
 
+## 下载 Codex Themes Desktop
+
+> **macOS 下载入口已预留。** GitHub Release 上传对应的同名安装包后，以下按钮会自动指向最新版本，无需再次修改 README。
+
+| 系统与芯片 | 下载 | 状态 |
+| --- | --- | --- |
+| macOS · Apple Silicon（M1 / M2 / M3 / M4 及后续 Apple 芯片） | **[下载 Apple Silicon 版 DMG](https://github.com/NBchitu/CodexThemes-App/releases/latest/download/Codex-Themes-macOS-Apple-Silicon.dmg)** | Release 安装包待上传 |
+| macOS · Intel 芯片 | **[下载 Intel 版 DMG](https://github.com/NBchitu/CodexThemes-App/releases/latest/download/Codex-Themes-macOS-Intel.dmg)** | Release 安装包待上传 |
+| Windows · x64 | 暂未开放下载 | **极速开发中** |
+
+不知道自己的 Mac 使用哪种芯片？点击屏幕左上角 ** → 关于本机**：看到“芯片 Apple M…”请选择 Apple Silicon 版；看到“处理器 Intel…”请选择 Intel 版。
+
+也可以前往 [GitHub Releases](https://github.com/NBchitu/CodexThemes-App/releases) 查看全部版本、更新说明和文件校验信息。安装包正式签名、公证并上传前，请不要把上述预留链接视为已经发布。
+
 ## 界面预览
 
-> 下列图片是预留截图位。发布正式截图时，直接用同名文件替换 `docs/screenshots/` 中的 SVG 即可，无需修改 README。
+### 软件总览与在线主题商城
 
-![Codex Themes Desktop 主题发现页](docs/screenshots/01-discover.svg)
+打开 Codex Themes Desktop 后，可以从统一侧边栏进入主题发现、主题管理、主题创建和设置页面，并一键前往在线主题商城。
 
-| 我的主题 | 创建主题 |
-| --- | --- |
-| ![Codex Themes Desktop 我的主题页面](docs/screenshots/02-my-themes.svg) | ![Codex Themes Desktop 创建主题页面](docs/screenshots/03-create-theme.svg) |
+![Codex Themes Desktop 软件总览与在线主题商城](docs/screenshots/codex-themes-desktop-overview.png)
 
-建议正式截图保持 `1600 × 1000` 或相同比例，并在截图前移除私人路径、对话内容、账号信息和密钥。
+### 本地主题管理
+
+“My Themes”集中展示内置主题和本地导入主题。用户可以打开主题目录、导入解压后的主题文件夹，并选择主题应用到 Codex。
+
+![Codex Themes Desktop 本地主题管理界面](docs/screenshots/codex-themes-theme-library.png)
+
+### 创建主题引导
+
+“Create”页面把主题制作拆成准备图片与指南、发送给 Codex、导入并应用三个步骤，即使不熟悉配置文件也能跟随完成。
+
+![Codex Themes Desktop 创建 Codex 主题引导页面](docs/screenshots/codex-themes-create-theme-guide.png)
 
 ## 它能做什么
 
-- 从 [Codex Themes 官方主题商城](https://codex.cms.app) 浏览主题。
+- 从 [Codex Themes 官方主题商城](https://codexthemes.app/) 浏览主题。
 - 导入已经解压的本地主题文件夹，并进行基础结构校验。
 - 在“我的主题”中查看内置主题和导入主题。
 - 一键应用主题，并在原生环境中验证主题是否真正生效。
@@ -37,13 +60,13 @@ Codex Themes Desktop 是一款面向 macOS 的图形化 Codex 主题管理工具
 - 导出主题制作指南，配合 Codex 从喜欢的图片创建新主题。
 - 在浅色、深色与跟随系统三种应用外观之间切换。
 
-当前版本以 macOS 为主。Windows 适配、中文界面、日文界面、自动更新、签名与公证发行包仍在规划或发布准备阶段，详见[交付状态](docs/development/delivery-status.md)。
+当前版本以 macOS 为主，并分别为 Apple Silicon 与 Intel 芯片准备发行入口。Windows 版本正在极速开发中；中文界面、日文界面、自动更新、签名与公证发行包仍在规划或发布准备阶段，详见[交付状态](docs/development/delivery-status.md)。
 
 ## 快速上手
 
 ### 1. 安装与打开
 
-目前仓库提供源代码和开发构建流程，尚未提供经过 Apple Developer ID 签名、公证的公开安装包。普通用户请等待 Releases 页面出现正式版本后再下载；不要运行来源不明的二次打包版本。
+目前仓库提供源代码、开发构建流程和顶部的 Release 下载预留入口。普通用户请在 Releases 页面出现经过 Apple Developer ID 签名、公证的正式版本后再下载；不要运行来源不明的二次打包版本。
 
 首次打开后，左侧会看到四个入口：
 
@@ -57,7 +80,7 @@ Codex Themes Desktop 是一款面向 macOS 的图形化 Codex 主题管理工具
 这是最适合第一次使用的流程：
 
 1. 打开 **Discover**，点击 **Browse theme gallery**。
-2. 浏览器会打开 [https://codex.cms.app](https://codex.cms.app)。
+2. 浏览器会打开 [https://codexthemes.app/](https://codexthemes.app/)。
 3. 选择喜欢的主题，下载 ZIP 压缩包。
 4. 在 Finder 中双击 ZIP，把它解压成一个普通文件夹。
 5. 回到应用，点击 **Import extracted theme**。
@@ -200,4 +223,4 @@ docs/screenshots/     README 截图及占位图
 
 源代码采用 [MIT License](LICENSE) 发布。第三方依赖及主题素材可能适用各自的许可证；MIT License 不自动授予任何图片、人物肖像、商标或品牌素材的使用权。
 
-官方主题商城：[https://codex.cms.app](https://codex.cms.app)
+官方主题商城：[https://codexthemes.app/](https://codexthemes.app/)
