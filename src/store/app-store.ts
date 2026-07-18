@@ -1,0 +1,94 @@
+import { create } from "zustand";
+import type { RuntimeSnapshot, Theme } from "../domain/theme";
+import { themes as initialThemes } from "../domain/themes";
+
+export type AppRoute = "discover" | "library" | "create" | "settings";
+
+interface Preferences {
+  launchAtLogin: boolean;
+  startMinimized: boolean;
+  restoreLastTheme: boolean;
+  autoUpdateThemes: boolean;
+  appearance: "system" | "light" | "dark";
+}
+
+interface AppState {
+  route: AppRoute;
+  themes: Theme[];
+  runtime: RuntimeSnapshot;
+  preferredThemeId: string | null;
+  selectedThemeId: string | null;
+  notice: string | null;
+  preferences: Preferences;
+  setRoute: (route: AppRoute) => void;
+  selectTheme: (id: string | null) => void;
+  setRuntime: (runtime: RuntimeSnapshot) => void;
+  setPreferredTheme: (id: string | null) => void;
+  setThemes: (themes: Theme[]) => void;
+  setNotice: (notice: string | null) => void;
+  updatePreference: <K extends keyof Preferences>(key: K, value: Preferences[K]) => void;
+}
+
+const storedPreferences = (): Partial<Preferences> => {
+  try {
+    return JSON.parse(localStorage.getItem("codex-themes.preferences") ?? "{}");
+  } catch {
+    return {};
+  }
+};
+
+const defaultPreferences: Preferences = {
+  launchAtLogin: false,
+  startMinimized: true,
+  restoreLastTheme: true,
+  autoUpdateThemes: true,
+  appearance: "system",
+};
+
+const storedPreferredTheme = (): string | null => {
+  try {
+    const value = localStorage.getItem("codex-themes.preferred-theme");
+    return value && /^[A-Za-z0-9_-]{2,64}$/.test(value) ? value : null;
+  } catch {
+    return null;
+  }
+};
+
+export const useAppStore = create<AppState>((set) => ({
+  route: "library",
+  themes: initialThemes,
+  runtime: {
+    status: "preview",
+    activeThemeId: "preset-gothic-void-crusade",
+    message: "UI preview — native macOS bridge is not connected",
+    isNativeHost: false,
+  },
+  preferredThemeId: storedPreferredTheme(),
+  selectedThemeId: null,
+  notice: null,
+  preferences: { ...defaultPreferences, ...storedPreferences() },
+  setRoute: (route) => set({ route, selectedThemeId: null, notice: null }),
+  selectTheme: (selectedThemeId) => set({ selectedThemeId }),
+  setRuntime: (runtime) => set({ runtime }),
+  setPreferredTheme: (preferredThemeId) => set(() => {
+    try {
+      if (preferredThemeId) localStorage.setItem("codex-themes.preferred-theme", preferredThemeId);
+      else localStorage.removeItem("codex-themes.preferred-theme");
+    } catch {
+      // Keep the preference in memory when storage is unavailable.
+    }
+    return { preferredThemeId };
+  }),
+  setThemes: (themes) => set({ themes }),
+  setNotice: (notice) => set({ notice }),
+  updatePreference: (key, value) => set((state) => {
+    const preferences = { ...state.preferences, [key]: value };
+    try {
+      localStorage.setItem("codex-themes.preferences", JSON.stringify(preferences));
+    } catch {
+      // Some embedded or privacy-restricted preview contexts disable storage.
+      // Preferences remain valid for the current application session.
+    }
+    return { preferences };
+  }),
+}));

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
+  <title id="title">Create 页面截图占位图</title>
+  <desc id="desc">请用 Codex Themes Desktop 创建主题页正式截图替换此文件。</desc>
+  <rect width="1600" height="1000" fill="#f2f0eb"/>
+  <rect x="48" y="48" width="1504" height="904" rx="24" fill="#fffdf9" stroke="#cac5bb" stroke-width="3"/>
+  <rect x="48" y="48" width="300" height="904" rx="24" fill="#242a27"/>
+  <g fill="#eef2ef" stroke="#b8c5bc" stroke-width="3"><rect x="400" y="245" width="330" height="390" rx="18"/><rect x="760" y="245" width="330" height="390" rx="18"/><rect x="1120" y="245" width="330" height="390" rx="18"/></g>
+  <g fill="#52705c" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="38" font-weight="700"><text x="440" y="310">1</text><text x="800" y="310">2</text><text x="1160" y="310">3</text></g>
+  <text x="925" y="735" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="42" font-weight="700" fill="#242a27">Create 页面截图</text>
+  <text x="925" y="795" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="26" fill="#686e69">请用正式截图替换同名文件</text>
+</svg>
