@@ -1,16 +1,22 @@
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
-import type { OperationResult, RuntimeSnapshot, Theme, ThemeLibraryResult } from "../domain/theme";
+import type { CodexThemePackageSummary, OperationResult, RuntimeSnapshot, Theme, ThemeLibraryResult, ThemeSettings } from "../domain/theme";
 import { themes as previewThemes } from "../domain/themes";
 
 export interface PlatformBridge {
   getRuntimeStatus(): Promise<RuntimeSnapshot>;
   applyTheme(themeId: string): Promise<OperationResult>;
+  updateThemeSettings(themeId: string, settings: ThemeSettings): Promise<ThemeLibraryResult>;
   initializeThemeLibrary(): Promise<ThemeLibraryResult>;
   importThemeFolder(): Promise<ThemeLibraryResult>;
+  importCodexThemePackage(): Promise<ThemeLibraryResult>;
+  inspectCodexThemePackage(path: string): Promise<CodexThemePackageSummary>;
+  importCodexThemePath(path: string, overwrite: boolean): Promise<ThemeLibraryResult>;
+  pendingCodexThemePath(): Promise<string | null>;
   deleteTheme(themeId: string): Promise<ThemeLibraryResult>;
   openThemesFolder(): Promise<OperationResult>;
   exportThemeCreationGuide(): Promise<OperationResult>;
   openThemeGallery(): Promise<OperationResult>;
+  openProjectHome(): Promise<OperationResult>;
   restoreOriginal(): Promise<OperationResult>;
   openCodex(): Promise<OperationResult>;
 }
@@ -32,6 +38,11 @@ class NativePlatformBridge implements PlatformBridge {
     return invoke<OperationResult>("apply_theme", { themeId });
   }
 
+  async updateThemeSettings(themeId: string, settings: ThemeSettings) {
+    const result = await invoke<ThemeLibraryResult>("update_theme_settings", { themeId, settings });
+    return { ...result, themes: result.themes.map(withNativePreview) };
+  }
+
   async initializeThemeLibrary() {
     const result = await invoke<ThemeLibraryResult>("initialize_theme_library");
     return { ...result, themes: result.themes.map(withNativePreview) };
@@ -41,6 +52,18 @@ class NativePlatformBridge implements PlatformBridge {
     const result = await invoke<ThemeLibraryResult>("import_theme_folder");
     return { ...result, themes: result.themes.map(withNativePreview) };
   }
+
+  async importCodexThemePackage() {
+    const result = await invoke<ThemeLibraryResult>("import_codextheme_package");
+    return { ...result, themes: result.themes.map(withNativePreview) };
+  }
+
+  inspectCodexThemePackage(path: string) { return invoke<CodexThemePackageSummary>("inspect_codextheme_package", {path}); }
+  async importCodexThemePath(path: string, overwrite: boolean) {
+    const result = await invoke<ThemeLibraryResult>("import_codextheme_path", {path, overwrite});
+    return {...result, themes: result.themes.map(withNativePreview)};
+  }
+  pendingCodexThemePath() { return invoke<string | null>("pending_codextheme_path"); }
 
   async deleteTheme(themeId: string) {
     const result = await invoke<ThemeLibraryResult>("delete_theme", { themeId });
@@ -58,6 +81,10 @@ class NativePlatformBridge implements PlatformBridge {
 
   openThemeGallery() {
     return invoke<OperationResult>("open_theme_gallery");
+  }
+
+  openProjectHome() {
+    return invoke<OperationResult>("open_project_home");
   }
 
   restoreOriginal() {
@@ -95,6 +122,17 @@ class PreviewPlatformBridge implements PlatformBridge {
     };
   }
 
+  async updateThemeSettings(themeId: string, settings: ThemeSettings): Promise<ThemeLibraryResult> {
+    return {
+      themes: previewThemes.filter((theme) => theme.installed).map((theme) => theme.id === themeId ? {
+        ...theme,
+        appearance: settings.appearance,
+        art: { ...theme.art, taskMode: settings.taskMode, safeArea: settings.safeArea },
+      } : theme),
+      message: "Theme settings updated for this preview.",
+    };
+  }
+
   async initializeThemeLibrary(): Promise<ThemeLibraryResult> {
     return { themes: previewThemes.filter((theme) => theme.installed), message: "Preview themes are ready." };
   }
@@ -102,6 +140,14 @@ class PreviewPlatformBridge implements PlatformBridge {
   async importThemeFolder(): Promise<ThemeLibraryResult> {
     throw new Error("Open the native macOS app to import a theme folder.");
   }
+
+  async importCodexThemePackage(): Promise<ThemeLibraryResult> {
+    throw new Error("Open the native macOS app to import a .codextheme package.");
+  }
+
+  async inspectCodexThemePackage(): Promise<CodexThemePackageSummary> { throw new Error("Open the native app to inspect a .codextheme package."); }
+  async importCodexThemePath(): Promise<ThemeLibraryResult> { throw new Error("Open the native app to import a .codextheme package."); }
+  async pendingCodexThemePath(): Promise<string | null> { return null; }
 
   async deleteTheme(): Promise<ThemeLibraryResult> {
     throw new Error("Open the native macOS app to delete an imported theme.");
@@ -119,6 +165,11 @@ class PreviewPlatformBridge implements PlatformBridge {
   async openThemeGallery(): Promise<OperationResult> {
     window.open("https://codexthemes.app/?utm_source=codex_themes_desktop&utm_medium=desktop_app&utm_campaign=theme_gallery", "_blank", "noopener,noreferrer");
     return { ok: true, verified: true, status: "connected", message: "Theme gallery opened in your browser." };
+  }
+
+  async openProjectHome(): Promise<OperationResult> {
+    window.open("https://github.com/NBchitu/CodexThemes-App", "_blank", "noopener,noreferrer");
+    return { ok: true, verified: true, status: "connected", message: "GitHub project opened in your browser." };
   }
 
   async restoreOriginal(): Promise<OperationResult> {

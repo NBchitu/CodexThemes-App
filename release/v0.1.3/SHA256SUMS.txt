@@ -1,0 +1,2 @@
+9eb7b0de9753a94785a725842ab133b2e7c8a02267928a731a3de61a44a2991b  release/v0.1.3/Codex-Themes-v0.1.3-macOS-Apple-Silicon-arm64.dmg
+29354d7ee03ac46577278794ebe22487f2f6bf084281fd7a6592ba370c670f9a  release/v0.1.3/Codex-Themes-v0.1.3-macOS-Intel-x86_64.dmg

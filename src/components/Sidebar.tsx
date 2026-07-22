@@ -1,12 +1,13 @@
-import { BookOpen, Compass, Library, Play, Settings, Sparkles } from "lucide-react";
+import { BookOpen, Compass, Github, Library, Play, Settings } from "lucide-react";
+import logoMark from "../assets/brand/codexthemes-logo-mark.svg";
 import { cn } from "../lib/cn";
 import { t } from "../i18n/en";
 import { platformBridge } from "../services/platform";
 import { useAppStore, type AppRoute } from "../store/app-store";
 
 const items: Array<{ route: AppRoute; label: ReturnType<typeof t>; icon: typeof Compass }> = [
-  { route: "discover", label: t("discover"), icon: Compass },
   { route: "library", label: t("myThemes"), icon: Library },
+  { route: "discover", label: t("discover"), icon: Compass },
   { route: "create", label: t("create"), icon: BookOpen },
   { route: "settings", label: t("settings"), icon: Settings },
 ];
@@ -46,10 +47,19 @@ export function Sidebar() {
     }
   };
 
+  const openProjectHome = async () => {
+    try {
+      const result = await platformBridge.openProjectHome();
+      if (!result.ok) setNotice(result.message);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : String(error));
+    }
+  };
+
   return (
     <aside className="sidebar">
       <div className="brand">
-        <span className="brand-mark" aria-hidden="true"><Sparkles size={17} strokeWidth={1.8} /></span>
+        <span className="brand-mark" aria-hidden="true"><img src={logoMark} alt="" /></span>
         <span>{t("appName")}</span>
       </div>
       <nav className="nav-list" aria-label="Primary navigation">
@@ -68,7 +78,7 @@ export function Sidebar() {
       </nav>
       <div className="codex-launch-area">
         <button className="codex-launch-button" type="button" onClick={() => void launchCodex()} disabled={isLaunching}>
-          <span className="codex-launch-icon"><Play size={17} fill="currentColor" aria-hidden="true" /></span>
+          <span className="codex-launch-icon"><Play size={13} fill="currentColor" aria-hidden="true" /></span>
           <strong>{isLaunching ? "Launching…" : "Run Codex"}</strong>
         </button>
       </div>
@@ -79,6 +89,10 @@ export function Sidebar() {
         </div>
         <p>{runtime.status === "preview" ? "Preview mode" : runtime.message}</p>
       </div>
+      <button className="project-link" type="button" onClick={() => void openProjectHome()}>
+        <Github size={15} strokeWidth={1.8} aria-hidden="true" />
+        <span>GitHub · Latest releases</span>
+      </button>
     </aside>
   );
 }

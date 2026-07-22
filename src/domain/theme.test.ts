@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { themeManifestSchema, validateThemeManifest } from "./theme";
+import {
+  codexThemePackageManifestSchema,
+  themeManifestSchema,
+  validateCodexThemePackageManifest,
+  validateThemeManifest,
+} from "./theme";
 
 const validManifest = {
   schemaVersion: 1,
@@ -10,6 +15,27 @@ const validManifest = {
   description: "A test theme.",
   appearance: "auto",
   art: { focusX: 0.72, focusY: 0.45, safeArea: "left", taskMode: "ambient" },
+} as const;
+
+const validPackageManifest = {
+  ...validManifest,
+  id: "preset-quiet-studio",
+  image: "background.jpg",
+  brandSubtitle: "CODEX THEMES",
+  tagline: "A quiet workspace.",
+  projectPrefix: "Project · ",
+  projectLabel: "Choose project",
+  statusText: "READY",
+  quote: "Focus on the work",
+  colors: {
+    background: "#101010", panel: "#181818", panelAlt: "#202020",
+    accent: "#75a68b", accentAlt: "#9ac4aa", secondary: "#896f5e",
+    highlight: "#d8eadf", text: "#f4f4f4", muted: "#a0a0a0",
+    line: "rgba(117, 166, 139, .24)",
+  },
+  promoTitle: "Quiet Studio",
+  promoSub: "CodexThemes.app",
+  promoUrl: "https://codexthemes.app/themes/quiet-studio",
 } as const;
 
 describe("theme manifest", () => {
@@ -37,5 +63,15 @@ describe("theme manifest", () => {
     const items = validateThemeManifest({ ...validManifest, appearance: "neon" });
     expect(items[0]?.level).toBe("error");
     expect(items[0]?.message).toContain("appearance");
+  });
+
+  it("accepts the complete codextheme-v1 runtime contract", () => {
+    expect(codexThemePackageManifestSchema.safeParse(validPackageManifest).success).toBe(true);
+    expect(validateCodexThemePackageManifest(validPackageManifest)[0]?.level).toBe("success");
+  });
+
+  it("rejects executable fields and non-canonical background paths", () => {
+    expect(codexThemePackageManifestSchema.safeParse({...validPackageManifest, image: "../background.jpg"}).success).toBe(false);
+    expect(codexThemePackageManifestSchema.safeParse({...validPackageManifest, script: "install.sh"}).success).toBe(false);
   });
 });

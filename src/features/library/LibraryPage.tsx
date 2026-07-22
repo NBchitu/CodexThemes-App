@@ -1,4 +1,4 @@
-import { FolderInput, FolderOpen } from "lucide-react";
+import { FileArchive, FolderInput, FolderOpen } from "lucide-react";
 import { ThemeCard } from "../../components/ThemeCard";
 import type { Theme } from "../../domain/theme";
 import { useAppStore } from "../../store/app-store";
@@ -20,6 +20,15 @@ export function LibraryPage() {
       setNotice(error instanceof Error ? error.message : String(error));
     }
   };
+  const handlePackageImport = async () => {
+    try {
+      const result = await platformBridge.importCodexThemePackage();
+      setThemes(result.themes);
+      setNotice(result.message);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : String(error));
+    }
+  };
   const handleOpenFolder = async () => {
     try {
       const result = await platformBridge.openThemesFolder();
@@ -35,7 +44,8 @@ export function LibraryPage() {
         <div><p className="eyebrow">Local library</p><h1 id="library-title">My Themes</h1><p>Your built-in and locally imported themes, stored safely on this Mac.</p></div>
         <div className="header-actions">
           <button className="secondary-button" type="button" onClick={() => void handleOpenFolder()}><FolderOpen size={15} /> Open theme folder</button>
-          <button className="primary-button" type="button" onClick={() => void handleImport()}><FolderInput size={16} /> Import theme folder</button>
+          <button className="secondary-button" type="button" onClick={() => void handleImport()}><FolderInput size={16} /> Import legacy folder</button>
+          <button className="primary-button" type="button" onClick={() => void handlePackageImport()}><FileArchive size={16} /> Import .codextheme</button>
         </div>
       </header>
       <div className="theme-grid">

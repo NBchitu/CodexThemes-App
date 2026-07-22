@@ -2,7 +2,7 @@
 
 ## Saved increment
 
-Version: `0.1.1`
+Version: `0.1.3` release candidate (not published)
 
 This increment establishes the desktop product frontend and platform-neutral application layer. It is intentionally honest about its runtime boundary: browser preview mode does not execute or simulate a successful Codex CDP injection.
 
@@ -50,6 +50,10 @@ This increment establishes the desktop product frontend and platform-neutral app
 - Finder access to the managed theme library and confirmed deletion for inactive imported themes, with built-in, active-theme, and path-containment protection
 - Lower-overhead renderer lifecycle: structural mutation filtering, 300 ms coalescing, 15-second fallback checks, slower active CDP discovery, disconnected exponential backoff, and no backdrop blur on streaming surfaces
 - Prominent global Launch Codex action that stays visible across tabs and reuses the last selected theme's verified CDP launch path
+- Strict `codextheme-v1` domain validation and native `.codextheme` archive import with root-file allowlisting, link/path rejection, size limits, private staging, and atomic installation
+- Cold-start and running-App `.codextheme` handoff through a native pending-file queue
+- Concise Import/Cancel and Replace/Cancel package confirmation with rollback-safe replacement
+- Apple Silicon and Intel v0.1.2 DMGs with verified checksums, file association metadata, architecture, and ad-hoc signature integrity
 
 ## Active prioritized backlog
 
@@ -57,11 +61,11 @@ This increment establishes the desktop product frontend and platform-neutral app
 - Native menu bar and login item
 - Real diagnostics (original-appearance restoration from the GUI is complete)
 - Application updater
-- macOS signing, notarization, DMG packaging, and clean-machine acceptance
+- Developer ID signing, notarization, and clean-machine acceptance
 - Chinese and Japanese translations
 - Windows platform adapter
 
-The macOS MVP no longer includes an in-app remote marketplace index or downloader. Four curated built-in themes are planned; additional themes are downloaded as ZIP archives from the public website, extracted by the user, and imported as local folders.
+The macOS MVP does not yet include an in-app remote marketplace index or downloader. Existing public themes still use the extracted-folder compatibility flow. Native `.codextheme` import is implemented for the next website package format, but the UI and documentation must not claim those packages are publicly available until Publisher Studio and the R2 catalog ship them.
 
 ## Development environment
 
@@ -81,10 +85,11 @@ Add diagnostics, local logs, a copyable privacy-reviewed report, Open Logs Folde
 
 ## Native build artifact
 
-The current local arm64 development bundle is generated at:
+The current v0.1.3 release-candidate artifacts are generated at:
 
 ```text
-desktop-app/src-tauri/target/release/bundle/macos/Codex Themes.app
+desktop-app/release/v0.1.3/Codex-Themes-v0.1.3-macOS-Apple-Silicon-arm64.dmg
+desktop-app/release/v0.1.3/Codex-Themes-v0.1.3-macOS-Intel-x86_64.dmg
 ```
 
 The saved local artifact is ad-hoc signed for development. Public distribution still requires an Apple Developer ID Application certificate, hardened runtime configuration, notarization, and stapling.

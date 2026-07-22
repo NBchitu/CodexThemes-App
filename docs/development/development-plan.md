@@ -171,10 +171,10 @@ The macOS MVP uses a deliberately small distribution model: six user-curated the
 - [ ] Complete Developer ID signing, hardened runtime, notarization, stapling, DMG presentation, Universal Binary output, and clean-account acceptance testing.
 - [ ] Finish English localization-key coverage, then add Simplified Chinese and Japanese.
 
-### Deferred until after macOS stability
+### Deferred until after the website-assisted local-file loop is stable
 
 - Windows platform adapter and installer.
-- Direct ZIP import and in-app package downloads.
+- In-app remote package downloads and automatic theme updates. Direct local `.codextheme` import is implemented.
 - Remote marketplace index, update service, favorites, accounts, ratings, comments, payments, creator dashboard, and cloud sync.
 
 ## 4. Proposed source architecture

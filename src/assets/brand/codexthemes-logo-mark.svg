@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 260" role="img" aria-labelledby="title desc">
+  <title id="title">CodexThemes.app logo mark</title>
+  <desc id="desc">Three layered rounded C shapes in lavender, blue, and violet.</desc>
+  <defs>
+    <linearGradient id="rear" x1="20" y1="20" x2="180" y2="196" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#DED7FF"/>
+      <stop offset="1" stop-color="#A996FF"/>
+    </linearGradient>
+    <linearGradient id="middle" x1="40" y1="40" x2="200" y2="216" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8AD8F8"/>
+      <stop offset="1" stop-color="#629BFF"/>
+    </linearGradient>
+    <linearGradient id="front" x1="60" y1="60" x2="220" y2="236" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8175FF"/>
+      <stop offset="1" stop-color="#5545F2"/>
+    </linearGradient>
+    <path id="c-shape" d="M160 20H90C51.34 20 20 51.34 20 90v36c0 38.66 31.34 70 70 70h70c11.05 0 20-8.95 20-20s-8.95-20-20-20H96c-19.88 0-36-16.12-36-36V96c0-19.88 16.12-36 36-36h64c11.05 0 20-8.95 20-20s-8.95-20-20-20Z"/>
+  </defs>
+  <use href="#c-shape" fill="url(#rear)"/>
+  <use href="#c-shape" transform="translate(20 20)" fill="url(#middle)" stroke="#FFFFFF" stroke-width="2"/>
+  <use href="#c-shape" transform="translate(40 40)" fill="url(#front)" stroke="#FFFFFF" stroke-width="2"/>
+</svg>

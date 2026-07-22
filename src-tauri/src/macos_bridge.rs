@@ -3,17 +3,22 @@ use serde_json::Value;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::{
+    collections::BTreeSet,
     env, fs,
+    io::Read,
     path::{Path, PathBuf},
     process::{Command, Output},
 };
 use tauri::{AppHandle, Manager};
+use zip::ZipArchive;
 
 const INSTALLED_ENGINE: &str = ".codex/codex-dream-skin-studio";
 const STATE_THEME: &str = "Library/Application Support/CodexDreamSkinStudio/theme/theme.json";
 const THEME_GALLERY_URL: &str = "https://codexthemes.app/?utm_source=codex_themes_desktop&utm_medium=desktop_app&utm_campaign=theme_gallery";
+const PROJECT_URL: &str = "https://github.com/NBchitu/CodexThemes-App";
 const MAX_THEME_FILE_SIZE: u64 = 16 * 1024 * 1024;
 const MAX_THEME_TOTAL_SIZE: u64 = 32 * 1024 * 1024;
+const MAX_CODEXTHEME_ARCHIVE_SIZE: u64 = 32 * 1024 * 1024;
 const THEME_CREATION_GUIDE: &str =
     include_str!("../../resources/guides/codex-theme-creation-guide.md");
 
@@ -44,6 +49,18 @@ pub struct ThemeLibraryResult {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct CodexThemePackageSummary {
+    path: String,
+    id: String,
+    name: String,
+    author: String,
+    version: String,
+    description: String,
+    already_installed: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RuntimeSnapshot {
     status: String,
     active_theme_id: Option<String>,
@@ -58,6 +75,14 @@ pub struct OperationResult {
     verified: bool,
     status: String,
     message: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThemeSettings {
+    appearance: String,
+    task_mode: String,
+    safe_area: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -385,6 +410,341 @@ fn import_theme_from(app: &AppHandle, source: &Path) -> Result<ThemeLibraryResul
     })
 }
 
+fn validate_codextheme_entry(
+    name: &str,
+    is_directory: bool,
+    unix_mode: Option<u32>,
+) -> Result<(), String> {
+    if is_directory
+        || name.contains('\\')
+        || name.starts_with('/')
+        || name.split('/').any(|part| part == "..")
+    {
+        return Err(format!("Unsafe path in codextheme package: {name}"));
+    }
+    if Path::new(name).file_name().and_then(|value| value.to_str()) != Some(name) {
+        return Err(format!(
+            "codextheme files must be at the archive root: {name}"
+        ));
+    }
+    if unix_mode.is_some_and(|mode| mode & 0o170000 == 0o120000) {
+        return Err(format!(
+            "Symbolic links are not allowed in codextheme packages: {name}"
+        ));
+    }
+    if !matches!(name, "theme.json" | "background.jpg") {
+        return Err(format!("Unsupported file in codextheme package: {name}"));
+    }
+    Ok(())
+}
+
+fn validate_codextheme_manifest(manifest: &Value) -> Result<(), String> {
+    const FIELDS: [&str; 19] = [
+        "appearance",
+        "art",
+        "author",
+        "brandSubtitle",
+        "colors",
+        "description",
+        "id",
+        "image",
+        "name",
+        "projectLabel",
+        "projectPrefix",
+        "promoSub",
+        "promoTitle",
+        "promoUrl",
+        "quote",
+        "schemaVersion",
+        "statusText",
+        "tagline",
+        "version",
+    ];
+    const COLOR_FIELDS: [&str; 10] = [
+        "accent",
+        "accentAlt",
+        "background",
+        "highlight",
+        "line",
+        "muted",
+        "panel",
+        "panelAlt",
+        "secondary",
+        "text",
+    ];
+    let object = manifest
+        .as_object()
+        .ok_or_else(|| "codextheme-v1 theme.json must be an object.".to_string())?;
+    let actual = object.keys().map(String::as_str).collect::<BTreeSet<_>>();
+    let expected = FIELDS.into_iter().collect::<BTreeSet<_>>();
+    if actual != expected {
+        return Err("codextheme-v1 theme.json contains missing or unexpected fields.".to_string());
+    }
+    if manifest.get("schemaVersion").and_then(Value::as_u64) != Some(1) {
+        return Err("Only codextheme schemaVersion 1 is supported.".to_string());
+    }
+    let id = manifest_string(manifest, "id", "");
+    if !id.starts_with("preset-") || !valid_theme_id(&id) {
+        return Err("codextheme theme id must use the preset- slug format.".to_string());
+    }
+    for (field, maximum) in [("name", 80), ("author", 80), ("description", 320)] {
+        let value = manifest.get(field).and_then(Value::as_str).unwrap_or("");
+        if value.trim().is_empty() || value.chars().count() > maximum {
+            return Err(format!("codextheme-v1 {field} is invalid."));
+        }
+    }
+    let version = manifest
+        .get("version")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    let version_parts = version.split('.').collect::<Vec<_>>();
+    if version_parts.len() != 3
+        || version_parts
+            .iter()
+            .any(|part| part.parse::<u64>().is_err() || (part.len() > 1 && part.starts_with('0')))
+    {
+        return Err("codextheme-v1 version must use semantic x.y.z format.".to_string());
+    }
+    if !matches!(
+        manifest.get("appearance").and_then(Value::as_str),
+        Some("auto" | "light" | "dark")
+    ) {
+        return Err("codextheme-v1 appearance is invalid.".to_string());
+    }
+    if manifest_string(manifest, "image", "") != "background.jpg" {
+        return Err("codextheme-v1 theme.json must reference background.jpg.".to_string());
+    }
+    let art = manifest
+        .get("art")
+        .and_then(Value::as_object)
+        .ok_or_else(|| "codextheme-v1 art is invalid.".to_string())?;
+    let art_fields = art.keys().map(String::as_str).collect::<BTreeSet<_>>();
+    if art_fields
+        != ["focusX", "focusY", "safeArea", "taskMode"]
+            .into_iter()
+            .collect()
+    {
+        return Err("codextheme-v1 art contains missing or unexpected fields.".to_string());
+    }
+    for field in ["focusX", "focusY"] {
+        let value = art.get(field).and_then(Value::as_f64).unwrap_or(-1.0);
+        if !(0.0..=1.0).contains(&value) {
+            return Err(format!("codextheme-v1 art.{field} is invalid."));
+        }
+    }
+    if !matches!(
+        art.get("safeArea").and_then(Value::as_str),
+        Some("auto" | "left" | "right" | "center" | "none")
+    ) {
+        return Err("codextheme-v1 art.safeArea is invalid.".to_string());
+    }
+    if !matches!(
+        art.get("taskMode").and_then(Value::as_str),
+        Some("auto" | "ambient" | "banner" | "off")
+    ) {
+        return Err("codextheme-v1 art.taskMode is invalid.".to_string());
+    }
+    let colors = manifest
+        .get("colors")
+        .and_then(Value::as_object)
+        .ok_or_else(|| "codextheme-v1 colors are invalid.".to_string())?;
+    if colors.keys().map(String::as_str).collect::<BTreeSet<_>>()
+        != COLOR_FIELDS.into_iter().collect()
+    {
+        return Err("codextheme-v1 colors must contain exactly 10 supported fields.".to_string());
+    }
+    if colors.values().any(|value| match value.as_str() {
+        Some(text) => text.is_empty(),
+        None => true,
+    }) {
+        return Err("codextheme-v1 colors must be non-empty strings.".to_string());
+    }
+    if !manifest
+        .get("promoUrl")
+        .and_then(Value::as_str)
+        .is_some_and(|url| url.starts_with("https://"))
+    {
+        return Err("codextheme-v1 promoUrl must use HTTPS.".to_string());
+    }
+    Ok(())
+}
+
+fn read_codextheme_archive(source: &Path) -> Result<(Value, Vec<(String, Vec<u8>)>), String> {
+    let metadata = fs::metadata(source)
+        .map_err(|error| format!("Could not inspect the selected codextheme package: {error}"))?;
+    if !metadata.is_file() || metadata.len() == 0 || metadata.len() > MAX_CODEXTHEME_ARCHIVE_SIZE {
+        return Err("The codextheme package is empty or exceeds the 32 MB limit.".to_string());
+    }
+    let file = fs::File::open(source)
+        .map_err(|error| format!("Could not open the selected codextheme package: {error}"))?;
+    let mut archive = ZipArchive::new(file).map_err(|error| {
+        format!("The selected file is not a valid codextheme ZIP archive: {error}")
+    })?;
+    if archive.len() != 2 {
+        return Err(
+            "codextheme-v1 must contain exactly theme.json and background.jpg.".to_string(),
+        );
+    }
+    let mut total_size = 0u64;
+    let mut files = Vec::with_capacity(2);
+    for index in 0..archive.len() {
+        let mut entry = archive
+            .by_index(index)
+            .map_err(|error| format!("Could not inspect codextheme entry: {error}"))?;
+        let name = entry.name().to_string();
+        validate_codextheme_entry(&name, entry.is_dir(), entry.unix_mode())?;
+        if files.iter().any(|(existing, _)| existing == &name) {
+            return Err(format!("Duplicate file in codextheme package: {name}"));
+        }
+        if entry.size() == 0 || entry.size() > MAX_THEME_FILE_SIZE {
+            return Err(format!("{name} is empty or exceeds the 16 MB file limit."));
+        }
+        total_size = total_size.saturating_add(entry.size());
+        if total_size > MAX_THEME_TOTAL_SIZE {
+            return Err("The codextheme package exceeds the 32 MB extracted limit.".to_string());
+        }
+        let mut bytes = Vec::with_capacity(entry.size() as usize);
+        entry.read_to_end(&mut bytes).map_err(|error| {
+            format!("Could not read {name} from the codextheme package: {error}")
+        })?;
+        if bytes.len() as u64 != entry.size() {
+            return Err(format!(
+                "The extracted size of {name} did not match its archive metadata."
+            ));
+        }
+        files.push((name, bytes));
+    }
+    files.sort_by(|a, b| a.0.cmp(&b.0));
+    if files
+        .iter()
+        .map(|(name, _)| name.as_str())
+        .collect::<Vec<_>>()
+        != ["background.jpg", "theme.json"]
+    {
+        return Err(
+            "codextheme-v1 must contain exactly theme.json and background.jpg.".to_string(),
+        );
+    }
+    let manifest_bytes = files
+        .iter()
+        .find(|(name, _)| name == "theme.json")
+        .map(|(_, bytes)| bytes)
+        .ok_or_else(|| "codextheme package is missing theme.json.".to_string())?;
+    if manifest_bytes.len() > 256 * 1024 {
+        return Err("theme.json must not exceed 256 KB.".to_string());
+    }
+    let manifest: Value = serde_json::from_slice(manifest_bytes)
+        .map_err(|error| format!("theme.json is not valid JSON: {error}"))?;
+    validate_codextheme_manifest(&manifest)?;
+    Ok((manifest, files))
+}
+
+fn install_codextheme_from(
+    app: &AppHandle,
+    source: &Path,
+    overwrite: bool,
+) -> Result<ThemeLibraryResult, String> {
+    initialize_directories()?;
+    let (manifest, files) = read_codextheme_archive(source)?;
+    let id = manifest_string(&manifest, "id", "");
+    let destination_root = themes_root()?;
+    let destination = destination_root.join(&id);
+    if destination.exists() && !overwrite {
+        return Err(format!("A theme with id “{id}” is already installed."));
+    }
+    let temporary = destination_root.join(format!(".{id}.installing-{}", std::process::id()));
+    if temporary.exists() {
+        fs::remove_dir_all(&temporary)
+            .map_err(|error| format!("Could not clear a stale codextheme import: {error}"))?;
+    }
+    fs::create_dir(&temporary)
+        .map_err(|error| format!("Could not stage the codextheme package: {error}"))?;
+    #[cfg(unix)]
+    fs::set_permissions(&temporary, fs::Permissions::from_mode(0o700))
+        .map_err(|error| format!("Could not protect the staged codextheme package: {error}"))?;
+    let result = (|| {
+        for (name, bytes) in files {
+            let target = temporary.join(name);
+            fs::write(&target, bytes)
+                .map_err(|error| format!("Could not write a staged theme file: {error}"))?;
+            #[cfg(unix)]
+            fs::set_permissions(&target, fs::Permissions::from_mode(0o600))
+                .map_err(|error| format!("Could not protect a staged theme file: {error}"))?;
+        }
+        if destination.exists() {
+            let backup = destination_root.join(format!(".{id}.replacing-{}", std::process::id()));
+            if backup.exists() {
+                fs::remove_dir_all(&backup)
+                    .map_err(|error| format!("Could not clear a stale theme backup: {error}"))?;
+            }
+            fs::rename(&destination, &backup).map_err(|error| {
+                format!("Could not prepare the installed theme for replacement: {error}")
+            })?;
+            if let Err(error) = fs::rename(&temporary, &destination) {
+                let _ = fs::rename(&backup, &destination);
+                return Err(format!(
+                    "Could not replace the installed codextheme package: {error}"
+                ));
+            }
+            let _ = fs::remove_dir_all(&backup);
+        } else {
+            fs::rename(&temporary, &destination).map_err(|error| {
+                format!("Could not publish the imported codextheme package: {error}")
+            })?;
+        }
+        Ok::<(), String>(())
+    })();
+    if result.is_err() {
+        let _ = fs::remove_dir_all(&temporary);
+    }
+    result?;
+    let root = engine_with_script(app, "switch-theme-macos.sh")?;
+    let themes = scan_theme_library(&root)?;
+    Ok(ThemeLibraryResult {
+        themes,
+        message: format!(
+            "{} {}.",
+            if overwrite { "Replaced" } else { "Imported" },
+            manifest_string(&manifest, "name", &id)
+        ),
+        imported_theme_id: Some(id),
+    })
+}
+
+#[tauri::command]
+pub async fn inspect_codextheme_package(path: String) -> Result<CodexThemePackageSummary, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let source = PathBuf::from(&path);
+        let (manifest, _) = read_codextheme_archive(&source)?;
+        let id = manifest_string(&manifest, "id", "");
+        let already_installed = themes_root()?.join(&id).exists();
+        Ok(CodexThemePackageSummary {
+            path,
+            id,
+            name: manifest_string(&manifest, "name", ""),
+            author: manifest_string(&manifest, "author", "admin"),
+            version: manifest_string(&manifest, "version", ""),
+            description: manifest_string(&manifest, "description", ""),
+            already_installed,
+        })
+    })
+    .await
+    .map_err(|error| format!("codextheme inspection task failed: {error}"))?
+}
+
+#[tauri::command]
+pub async fn import_codextheme_path(
+    app: AppHandle,
+    path: String,
+    overwrite: bool,
+) -> Result<ThemeLibraryResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        install_codextheme_from(&app, Path::new(&path), overwrite)
+    })
+    .await
+    .map_err(|error| format!("codextheme import task failed: {error}"))?
+}
+
 fn seed_bundled_preset(root: &Path, theme_id: &str) -> Result<(), String> {
     seed_bundled_preset_to(root, &themes_root()?, theme_id)
 }
@@ -482,6 +842,10 @@ fn output_error(script: &str, output: &Output) -> String {
     let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
     let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
     let detail = if stderr.is_empty() { stdout } else { stderr };
+    if detail.contains("signature is not valid") || detail.contains("code-signature validation") {
+        return "Codex could not be verified. Reinstall the official Codex app, then try again."
+            .to_string();
+    }
     if detail.is_empty() {
         format!("{script} exited with status {}", output.status)
     } else {
@@ -633,6 +997,76 @@ pub async fn import_theme_folder(app: AppHandle) -> Result<ThemeLibraryResult, S
 }
 
 #[tauri::command]
+pub async fn import_codextheme_package(app: AppHandle) -> Result<ThemeLibraryResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let selected = rfd::FileDialog::new()
+            .set_title("Choose a Codex Themes package")
+            .add_filter("Codex Theme", &["codextheme"])
+            .pick_file();
+        match selected {
+            Some(path) => install_codextheme_from(&app, &path, false),
+            None => {
+                let mut result = initialize_library(&app)?;
+                result.message = "Import cancelled.".to_string();
+                Ok(result)
+            }
+        }
+    })
+    .await
+    .map_err(|error| format!("codextheme import task failed: {error}"))?
+}
+
+#[cfg(test)]
+mod codextheme_tests {
+    use super::{validate_codextheme_entry, validate_codextheme_manifest};
+    use serde_json::json;
+
+    fn valid_manifest() -> serde_json::Value {
+        json!({
+            "schemaVersion": 1, "id": "preset-quiet-studio", "name": "Quiet Studio",
+            "author": "admin", "version": "1.0.0", "description": "A quiet theme.",
+            "appearance": "dark", "image": "background.jpg",
+            "art": {"focusX": 0.7, "focusY": 0.5, "safeArea": "left", "taskMode": "ambient"},
+            "brandSubtitle": "CODEX THEMES", "tagline": "Quiet", "projectPrefix": "Project · ",
+            "projectLabel": "Choose project", "statusText": "READY", "quote": "FOCUS",
+            "colors": {"background": "#111", "panel": "#181818", "panelAlt": "#202020", "accent": "#789", "accentAlt": "#89a", "secondary": "#765", "highlight": "#def", "text": "#fff", "muted": "#aaa", "line": "rgba(1,2,3,.2)"},
+            "promoTitle": "Quiet Studio", "promoSub": "CodexThemes.app",
+            "promoUrl": "https://codexthemes.app/themes/quiet-studio"
+        })
+    }
+
+    #[test]
+    fn accepts_only_the_two_regular_root_files() {
+        assert!(validate_codextheme_entry("theme.json", false, Some(0o100600)).is_ok());
+        assert!(validate_codextheme_entry("background.jpg", false, Some(0o100600)).is_ok());
+        assert!(validate_codextheme_entry("install.sh", false, Some(0o100700)).is_err());
+        assert!(validate_codextheme_entry("assets/background.jpg", false, Some(0o100600)).is_err());
+    }
+
+    #[test]
+    fn rejects_traversal_directories_and_links() {
+        assert!(validate_codextheme_entry("../theme.json", false, Some(0o100600)).is_err());
+        assert!(validate_codextheme_entry("theme.json", true, Some(0o040700)).is_err());
+        assert!(validate_codextheme_entry("theme.json", false, Some(0o120777)).is_err());
+    }
+
+    #[test]
+    fn validates_the_complete_native_manifest_boundary() {
+        let manifest = valid_manifest();
+        assert!(validate_codextheme_manifest(&manifest).is_ok());
+        let mut executable = manifest.clone();
+        executable
+            .as_object_mut()
+            .unwrap()
+            .insert("script".to_string(), json!("install.sh"));
+        assert!(validate_codextheme_manifest(&executable).is_err());
+        let mut invalid_art = manifest;
+        invalid_art["art"]["focusX"] = json!(1.5);
+        assert!(validate_codextheme_manifest(&invalid_art).is_err());
+    }
+}
+
+#[tauri::command]
 pub async fn open_themes_folder() -> Result<OperationResult, String> {
     tauri::async_runtime::spawn_blocking(move || {
         initialize_directories()?;
@@ -755,10 +1189,120 @@ pub async fn open_theme_gallery() -> Result<OperationResult, String> {
 }
 
 #[tauri::command]
+pub async fn open_project_home() -> Result<OperationResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let output = Command::new("/usr/bin/open")
+            .arg(PROJECT_URL)
+            .output()
+            .map_err(|error| format!("Could not open the GitHub project: {error}"))?;
+        let ok = output.status.success();
+        Ok(OperationResult {
+            ok,
+            verified: ok,
+            status: if ok { "connected" } else { "error" }.to_string(),
+            message: if ok {
+                "GitHub project opened in your browser.".to_string()
+            } else {
+                output_error("open", &output)
+            },
+        })
+    })
+    .await
+    .map_err(|error| format!("Open GitHub project task failed: {error}"))?
+}
+
+#[tauri::command]
 pub async fn get_runtime_status(app: AppHandle) -> Result<RuntimeSnapshot, String> {
     tauri::async_runtime::spawn_blocking(move || status_from_script(&app, false))
         .await
         .map_err(|error| format!("Runtime status task failed: {error}"))?
+}
+
+#[tauri::command]
+pub async fn update_theme_settings(
+    app: AppHandle,
+    theme_id: String,
+    settings: ThemeSettings,
+) -> Result<ThemeLibraryResult, String> {
+    if !valid_theme_id(&theme_id) {
+        return Err("Theme id contains unsupported characters.".to_string());
+    }
+    if !matches!(settings.appearance.as_str(), "auto" | "light" | "dark")
+        || !matches!(
+            settings.task_mode.as_str(),
+            "auto" | "ambient" | "banner" | "off"
+        )
+        || !matches!(
+            settings.safe_area.as_str(),
+            "auto" | "left" | "right" | "center" | "none"
+        )
+    {
+        return Err("Theme settings contain an unsupported value.".to_string());
+    }
+
+    tauri::async_runtime::spawn_blocking(move || {
+        initialize_directories()?;
+        let root = ensure_installed_runtime(&app)?;
+        seed_bundled_preset(&root, &theme_id)?;
+
+        let library = themes_root()?
+            .canonicalize()
+            .map_err(|error| format!("Could not resolve the managed theme library: {error}"))?;
+        let theme_directory = library
+            .join(&theme_id)
+            .canonicalize()
+            .map_err(|_| format!("Theme is not installed: {theme_id}"))?;
+        if theme_directory.parent() != Some(library.as_path()) {
+            return Err("The selected theme is outside the managed theme library.".to_string());
+        }
+
+        let manifest_path = theme_directory.join("theme.json");
+        let metadata = fs::symlink_metadata(&manifest_path)
+            .map_err(|error| format!("Could not inspect theme.json: {error}"))?;
+        if !metadata.file_type().is_file() || metadata.len() > 256 * 1024 {
+            return Err("theme.json must be a regular file no larger than 256 KB.".to_string());
+        }
+        let mut manifest: Value = serde_json::from_slice(
+            &fs::read(&manifest_path)
+                .map_err(|error| format!("Could not read theme.json: {error}"))?,
+        )
+        .map_err(|error| format!("theme.json is not valid JSON: {error}"))?;
+        let object = manifest
+            .as_object_mut()
+            .ok_or_else(|| "theme.json must contain a JSON object.".to_string())?;
+        object.insert("appearance".to_string(), Value::String(settings.appearance));
+        let art = object
+            .entry("art")
+            .or_insert_with(|| Value::Object(Default::default()))
+            .as_object_mut()
+            .ok_or_else(|| "theme.json art must be an object.".to_string())?;
+        art.insert("taskMode".to_string(), Value::String(settings.task_mode));
+        art.insert("safeArea".to_string(), Value::String(settings.safe_area));
+
+        let temporary_path =
+            theme_directory.join(format!(".theme.json.settings-{}", std::process::id()));
+        if temporary_path.exists() {
+            fs::remove_file(&temporary_path)
+                .map_err(|error| format!("Could not clear stale theme settings: {error}"))?;
+        }
+        let contents = serde_json::to_vec_pretty(&manifest)
+            .map_err(|error| format!("Could not encode theme settings: {error}"))?;
+        fs::write(&temporary_path, contents)
+            .map_err(|error| format!("Could not stage theme settings: {error}"))?;
+        #[cfg(unix)]
+        fs::set_permissions(&temporary_path, fs::Permissions::from_mode(0o600))
+            .map_err(|error| format!("Could not protect theme settings: {error}"))?;
+        fs::rename(&temporary_path, &manifest_path)
+            .map_err(|error| format!("Could not save theme settings: {error}"))?;
+
+        Ok(ThemeLibraryResult {
+            themes: scan_theme_library(&root)?,
+            message: "Theme settings saved.".to_string(),
+            imported_theme_id: None,
+        })
+    })
+    .await
+    .map_err(|error| format!("Update theme settings task failed: {error}"))?
 }
 
 #[tauri::command]
@@ -786,7 +1330,7 @@ pub async fn apply_theme(app: AppHandle, theme_id: String) -> Result<OperationRe
             verified,
             status: if verified { "active" } else { "error" }.to_string(),
             message: if verified {
-                "Your theme is ready in Codex.".to_string()
+                "Theme applied.".to_string()
             } else {
                 "Theme switch completed but the exact active revision was not verified.".to_string()
             },

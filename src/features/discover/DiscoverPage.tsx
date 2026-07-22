@@ -33,7 +33,7 @@ export function DiscoverPage() {
         <div className="gallery-copy">
           <p className="eyebrow">Online theme gallery</p>
           <h1 id="discover-title">Find a new atmosphere for Codex</h1>
-          <p>Browse the curated gallery in your browser. Download a theme, extract the ZIP, then import its folder here.</p>
+          <p>Browse the curated gallery in your browser. Until direct App packages are published, download a theme, extract the ZIP, then import its folder here.</p>
           <div className="gallery-actions">
             <button className="primary-button" type="button" onClick={() => void openGallery()}>
               Browse theme gallery <ArrowUpRight size={15} />
@@ -46,7 +46,7 @@ export function DiscoverPage() {
       </header>
       <ol className="import-steps" aria-label="Theme installation steps">
         <li><span>1</span><div><strong>Choose</strong><p>Pick a theme from the online gallery.</p></div></li>
-        <li><span>2</span><div><strong>Extract</strong><p>Download and extract the theme ZIP.</p></div></li>
+        <li><span>2</span><div><strong>Extract</strong><p>Download and extract the currently available theme ZIP.</p></div></li>
         <li><span>3</span><div><strong>Import</strong><p>Select the extracted folder, then apply it from My Themes.</p></div></li>
       </ol>
     </section>

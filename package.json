@@ -1,11 +1,12 @@
 {
   "name": "codex-themes-desktop",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "prepare:bundle-resources": "node scripts/prepare-bundle-resources.mjs",
+    "build": "npm run prepare:bundle-resources && tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "tauri": "tauri"

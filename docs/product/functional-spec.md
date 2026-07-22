@@ -25,8 +25,8 @@ Themes are applied through a controlled local Chrome DevTools Protocol (CDP) con
 
 The application contains four primary destinations:
 
-1. **Discover** — browse the theme marketplace.
-2. **My Themes** — manage built-in, downloaded, and imported themes.
+1. **My Themes** — default destination for built-in, downloaded, and imported themes.
+2. **Discover** — browse the theme marketplace.
 3. **Create** — learn how to create and validate a theme.
 4. **Settings** — configure startup, language, updates, and diagnostics.
 
@@ -273,4 +273,3 @@ The first release implements only the macOS adapter. A future Windows adapter wi
 - Arbitrary marketplace CSS or JavaScript execution
 - Embedded or proxied Codex UI
 - Production Chinese and Japanese translations
-

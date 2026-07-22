@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Codex Themes",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "identifier": "com.codexthemes.desktop",
   "build": {
     "frontendDist": "../dist",
@@ -32,11 +32,20 @@
   "bundle": {
     "active": true,
     "targets": ["app", "dmg"],
+    "fileAssociations": [
+      {
+        "ext": ["codextheme"],
+        "name": "Codex Theme",
+        "description": "Cross-platform Codex Themes package",
+        "role": "Editor",
+        "mimeType": "application/vnd.codexthemes.theme"
+      }
+    ],
     "resources": {
-      "../../macos/assets/": "macos-engine/assets/",
-      "../../macos/scripts/": "macos-engine/scripts/",
-      "../../macos/presets/": "macos-engine/presets/",
-      "../../macos/VERSION": "macos-engine/VERSION"
+      ".bundle-resources/macos-engine/assets/": "macos-engine/assets/",
+      ".bundle-resources/macos-engine/scripts/": "macos-engine/scripts/",
+      ".bundle-resources/macos-engine/presets/": "macos-engine/presets/",
+      ".bundle-resources/macos-engine/VERSION": "macos-engine/VERSION"
     },
     "icon": [
       "icons/32x32.png",
@@ -45,6 +54,24 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "macOS": {
+      "signingIdentity": "-",
+      "dmg": {
+        "background": "../resources/dmg/install-guide-bilingual.png",
+        "windowSize": {
+          "width": 660,
+          "height": 400
+        },
+        "appPosition": {
+          "x": 143,
+          "y": 160
+        },
+        "applicationFolderPosition": {
+          "x": 516,
+          "y": 160
+        }
+      }
+    },
     "android": {
       "debugApplicationIdSuffix": ".debug"
     }

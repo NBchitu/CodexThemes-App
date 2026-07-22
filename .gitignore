@@ -1,6 +1,7 @@
 node_modules/
 dist/
 src-tauri/target/
+src-tauri/.bundle-resources/
 *.tsbuildinfo
 vite.config.js
 vite.config.d.ts
@@ -8,3 +9,5 @@ vite.config.d.ts
 .idea/
 .vscode/
 *.log
+release/**/*.dmg
+release/**/.DS_Store
