@@ -1,6 +1,7 @@
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import type { CodexThemePackageSummary, OperationResult, RuntimeSnapshot, Theme, ThemeLibraryResult, ThemeSettings } from "../domain/theme";
 import { themes as previewThemes } from "../domain/themes";
+import type { WindowBorderStyle } from "../store/app-store";
 
 export interface PlatformBridge {
   getRuntimeStatus(): Promise<RuntimeSnapshot>;
@@ -19,6 +20,9 @@ export interface PlatformBridge {
   openProjectHome(): Promise<OperationResult>;
   restoreOriginal(): Promise<OperationResult>;
   openCodex(): Promise<OperationResult>;
+  setWindowEffectsEnabled(enabled: boolean): Promise<OperationResult>;
+  setWindowBorder(enabled: boolean, style: WindowBorderStyle): Promise<OperationResult>;
+  setPixelCatEnabled(enabled: boolean): Promise<OperationResult>;
 }
 
 declare global {
@@ -93,6 +97,18 @@ class NativePlatformBridge implements PlatformBridge {
 
   openCodex() {
     return invoke<OperationResult>("open_codex");
+  }
+
+  setWindowBorder(enabled: boolean, style: WindowBorderStyle) {
+    return invoke<OperationResult>("set_window_border_enabled", { enabled, style });
+  }
+
+  setWindowEffectsEnabled(enabled: boolean) {
+    return invoke<OperationResult>("set_window_effects_enabled", { enabled });
+  }
+
+  setPixelCatEnabled(enabled: boolean) {
+    return invoke<OperationResult>("set_pixel_cat_enabled", { enabled });
   }
 }
 
@@ -188,6 +204,39 @@ class PreviewPlatformBridge implements PlatformBridge {
       verified: false,
       status: "preview",
       message: "Codex launch is unavailable in browser preview mode.",
+    };
+  }
+
+  async setWindowBorder(enabled: boolean, style: WindowBorderStyle): Promise<OperationResult> {
+    return {
+      ok: true,
+      verified: true,
+      status: "preview",
+      message: enabled
+        ? `Animated ${style} window border enabled for this preview.`
+        : "Animated window border disabled for this preview.",
+    };
+  }
+
+  async setWindowEffectsEnabled(enabled: boolean): Promise<OperationResult> {
+    return {
+      ok: true,
+      verified: true,
+      status: "preview",
+      message: enabled
+        ? "Codex window effects enabled for this preview."
+        : "Codex window effects paused for this preview.",
+    };
+  }
+
+  async setPixelCatEnabled(enabled: boolean): Promise<OperationResult> {
+    return {
+      ok: true,
+      verified: true,
+      status: "preview",
+      message: enabled
+        ? "Pixel cat companion enabled for this preview."
+        : "Pixel cat companion disabled for this preview.",
     };
   }
 }

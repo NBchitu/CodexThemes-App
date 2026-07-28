@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "preset-cream-cat-diary",
+  "name": "奶油猫咪日记",
+  "brandSubtitle": "CODEX DREAM SKIN",
+  "tagline": "猫咪在旁，思路更稳，代码更美。",
+  "projectPrefix": "选择项目 · ",
+  "projectLabel": "♡  选择项目",
+  "statusText": "CREAM CAT ONLINE",
+  "quote": "CODE GENTLY, CREATE WONDERFULLY",
+  "image": "background.jpg",
+  "colors": {
+    "background": "#fffaf3",
+    "panel": "#fffdf9",
+    "panelAlt": "#f8eee3",
+    "accent": "#d77d7f",
+    "accentAlt": "#eca09b",
+    "secondary": "#d9aa76",
+    "highlight": "#f4c7aa",
+    "text": "#4b382e",
+    "muted": "#9b7f70",
+    "line": "rgba(215, 125, 127, .24)"
+  },
+  "promoTitle": "和奶油猫咪一起写代码",
+  "promoSub": "CodexThemes.app",
+  "promoUrl": "https://codexthemes.app"
+}

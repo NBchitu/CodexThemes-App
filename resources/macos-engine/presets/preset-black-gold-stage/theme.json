@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "preset-black-gold-stage",
+  "name": "黑金舞台",
+  "brandSubtitle": "CODEX DREAM SKIN",
+  "tagline": "沉静黑金与暖色舞台光，陪你专注完成深夜创作。",
+  "projectPrefix": "选择项目 · ",
+  "projectLabel": "✦  选择项目",
+  "statusText": "MIDNIGHT STAGE ONLINE",
+  "quote": "CREATE WITH QUIET CONFIDENCE",
+  "image": "background.jpg",
+  "colors": {
+    "background": "#0d0f0e",
+    "panel": "#171816",
+    "panelAlt": "#24221e",
+    "accent": "#c6a66e",
+    "accentAlt": "#dfc58f",
+    "secondary": "#75444a",
+    "highlight": "#f0d9aa",
+    "text": "#f3ead9",
+    "muted": "#b9aa91",
+    "line": "rgba(198, 166, 110, .24)"
+  },
+  "promoTitle": "让深夜灵感在舞台灯下落地",
+  "promoSub": "CodexThemes.app",
+  "promoUrl": "https://codexthemes.app"
+}

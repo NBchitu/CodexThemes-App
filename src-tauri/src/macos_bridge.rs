@@ -19,6 +19,9 @@ const PROJECT_URL: &str = "https://github.com/NBchitu/CodexThemes-App";
 const MAX_THEME_FILE_SIZE: u64 = 16 * 1024 * 1024;
 const MAX_THEME_TOTAL_SIZE: u64 = 32 * 1024 * 1024;
 const MAX_CODEXTHEME_ARCHIVE_SIZE: u64 = 32 * 1024 * 1024;
+const MAX_CODEXTHEME_MANIFEST_SIZE: u64 = 256 * 1024;
+const MAX_CODEXTHEME_IMAGE_SIDE: u32 = 16_384;
+const MAX_CODEXTHEME_IMAGE_PIXELS: u64 = 50_000_000;
 const THEME_CREATION_GUIDE: &str =
     include_str!("../../resources/guides/codex-theme-creation-guide.md");
 
@@ -438,6 +441,204 @@ fn validate_codextheme_entry(
     Ok(())
 }
 
+fn validate_single_line_text(
+    manifest: &Value,
+    field: &str,
+    maximum: usize,
+    required: bool,
+) -> Result<(), String> {
+    let Some(value) = manifest.get(field) else {
+        return if required {
+            Err(format!("codextheme-v1 {field} is missing."))
+        } else {
+            Ok(())
+        };
+    };
+    let value = value
+        .as_str()
+        .ok_or_else(|| format!("codextheme-v1 {field} must be a string."))?;
+    if (required && value.trim().is_empty())
+        || value.chars().count() > maximum
+        || value.chars().any(char::is_control)
+        || value.contains(['\n', '\r'])
+    {
+        return Err(format!("codextheme-v1 {field} is invalid."));
+    }
+    Ok(())
+}
+
+fn valid_css_number(value: &str, minimum: f64, maximum: f64) -> bool {
+    !value.is_empty()
+        && value
+            .parse::<f64>()
+            .is_ok_and(|number| number.is_finite() && (minimum..=maximum).contains(&number))
+}
+
+fn valid_css_color(value: &str) -> bool {
+    if value.len() >= 4 && value.starts_with('#') {
+        return matches!(value.len(), 4 | 5 | 7 | 9)
+            && value[1..].bytes().all(|byte| byte.is_ascii_hexdigit());
+    }
+    let (function, contents) = if let Some(contents) = value
+        .strip_prefix("rgb(")
+        .and_then(|value| value.strip_suffix(')'))
+    {
+        ("rgb", contents)
+    } else if let Some(contents) = value
+        .strip_prefix("rgba(")
+        .and_then(|value| value.strip_suffix(')'))
+    {
+        ("rgba", contents)
+    } else {
+        return false;
+    };
+    let parts = contents.split(',').map(str::trim).collect::<Vec<_>>();
+    let expected = if function == "rgb" { 3 } else { 4 };
+    if parts.len() != expected {
+        return false;
+    }
+    if !parts[..3].iter().all(|component| {
+        component.strip_suffix('%').map_or_else(
+            || valid_css_number(component, 0.0, 255.0),
+            |number| valid_css_number(number, 0.0, 100.0),
+        )
+    }) {
+        return false;
+    }
+    function == "rgb"
+        || parts[3].strip_suffix('%').map_or_else(
+            || valid_css_number(parts[3], 0.0, 1.0),
+            |number| valid_css_number(number, 0.0, 100.0),
+        )
+}
+
+fn valid_https_url(value: &str) -> bool {
+    if value.len() > 512
+        || value.chars().any(char::is_control)
+        || value.chars().any(char::is_whitespace)
+        || value.contains('\\')
+    {
+        return false;
+    }
+    let Some(remainder) = value.strip_prefix("https://") else {
+        return false;
+    };
+    let authority = remainder
+        .split_once(['/', '?', '#'])
+        .map_or(remainder, |(authority, _)| authority);
+    if authority.is_empty() || authority.contains('@') {
+        return false;
+    }
+    let (host, port) = if authority.starts_with('[') {
+        let Some(closing) = authority.find(']') else {
+            return false;
+        };
+        let host = &authority[1..closing];
+        let suffix = &authority[closing + 1..];
+        if suffix.is_empty() {
+            (host, None)
+        } else if let Some(port) = suffix.strip_prefix(':') {
+            (host, Some(port))
+        } else {
+            return false;
+        }
+    } else if let Some((host, port)) = authority.rsplit_once(':') {
+        if host.contains(':') {
+            return false;
+        }
+        (host, Some(port))
+    } else {
+        (authority, None)
+    };
+    if host.is_empty()
+        || host.starts_with('.')
+        || host.ends_with('.')
+        || host.split('.').any(|label| {
+            label.is_empty()
+                || label.starts_with('-')
+                || label.ends_with('-')
+                || !label
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+        })
+    {
+        return false;
+    }
+    match port {
+        None => true,
+        Some(port) => !port.is_empty() && port.parse::<u16>().is_ok_and(|number| number != 0),
+    }
+}
+
+fn validate_codextheme_jpeg(bytes: &[u8]) -> Result<(u32, u32), String> {
+    if !bytes.starts_with(&[0xff, 0xd8]) {
+        return Err("background.jpg is not a JPEG image.".to_string());
+    }
+    let mut offset = 2usize;
+    while offset < bytes.len() {
+        while offset < bytes.len() && bytes[offset] == 0xff {
+            offset += 1;
+        }
+        if offset >= bytes.len() {
+            break;
+        }
+        let marker = bytes[offset];
+        offset += 1;
+        if marker == 0xd9 || marker == 0xda {
+            break;
+        }
+        if marker == 0x00 || marker == 0x01 || (0xd0..=0xd7).contains(&marker) {
+            continue;
+        }
+        let Some(length_bytes) = bytes.get(offset..offset.saturating_add(2)) else {
+            return Err("background.jpg contains a truncated JPEG segment.".to_string());
+        };
+        let segment_length = u16::from_be_bytes([length_bytes[0], length_bytes[1]]) as usize;
+        if segment_length < 2 {
+            return Err("background.jpg contains an invalid JPEG segment.".to_string());
+        }
+        let segment_end = offset
+            .checked_add(segment_length)
+            .filter(|end| *end <= bytes.len())
+            .ok_or_else(|| "background.jpg contains a truncated JPEG segment.".to_string())?;
+        if matches!(
+            marker,
+            0xc0 | 0xc1
+                | 0xc2
+                | 0xc3
+                | 0xc5
+                | 0xc6
+                | 0xc7
+                | 0xc9
+                | 0xca
+                | 0xcb
+                | 0xcd
+                | 0xce
+                | 0xcf
+        ) {
+            if segment_length < 8 {
+                return Err("background.jpg contains an invalid JPEG frame.".to_string());
+            }
+            let height = u16::from_be_bytes([bytes[offset + 3], bytes[offset + 4]]) as u32;
+            let width = u16::from_be_bytes([bytes[offset + 5], bytes[offset + 6]]) as u32;
+            let pixels = u64::from(width).saturating_mul(u64::from(height));
+            if width == 0
+                || height == 0
+                || width > MAX_CODEXTHEME_IMAGE_SIDE
+                || height > MAX_CODEXTHEME_IMAGE_SIDE
+                || pixels > MAX_CODEXTHEME_IMAGE_PIXELS
+            {
+                return Err(format!(
+                    "background.jpg dimensions {width}×{height} exceed the supported image limits."
+                ));
+            }
+            return Ok((width, height));
+        }
+        offset = segment_end;
+    }
+    Err("background.jpg does not contain readable JPEG dimensions.".to_string())
+}
+
 fn validate_codextheme_manifest(manifest: &Value) -> Result<(), String> {
     const FIELDS: [&str; 19] = [
         "appearance",
@@ -488,10 +689,19 @@ fn validate_codextheme_manifest(manifest: &Value) -> Result<(), String> {
         return Err("codextheme theme id must use the preset- slug format.".to_string());
     }
     for (field, maximum) in [("name", 80), ("author", 80), ("description", 320)] {
-        let value = manifest.get(field).and_then(Value::as_str).unwrap_or("");
-        if value.trim().is_empty() || value.chars().count() > maximum {
-            return Err(format!("codextheme-v1 {field} is invalid."));
-        }
+        validate_single_line_text(manifest, field, maximum, true)?;
+    }
+    for (field, maximum) in [
+        ("brandSubtitle", 80),
+        ("tagline", 160),
+        ("projectPrefix", 80),
+        ("projectLabel", 120),
+        ("statusText", 80),
+        ("quote", 200),
+        ("promoTitle", 120),
+        ("promoSub", 160),
+    ] {
+        validate_single_line_text(manifest, field, maximum, false)?;
     }
     let version = manifest
         .get("version")
@@ -553,24 +763,26 @@ fn validate_codextheme_manifest(manifest: &Value) -> Result<(), String> {
     {
         return Err("codextheme-v1 colors must contain exactly 10 supported fields.".to_string());
     }
-    if colors.values().any(|value| match value.as_str() {
-        Some(text) => text.is_empty(),
-        None => true,
-    }) {
-        return Err("codextheme-v1 colors must be non-empty strings.".to_string());
+    if colors
+        .values()
+        .any(|value| !value.as_str().is_some_and(valid_css_color))
+    {
+        return Err(
+            "codextheme-v1 colors must use supported hex, rgb(), or rgba() syntax.".to_string(),
+        );
     }
     if !manifest
         .get("promoUrl")
         .and_then(Value::as_str)
-        .is_some_and(|url| url.starts_with("https://"))
+        .is_some_and(valid_https_url)
     {
-        return Err("codextheme-v1 promoUrl must use HTTPS.".to_string());
+        return Err("codextheme-v1 promoUrl must be a valid HTTPS URL.".to_string());
     }
     Ok(())
 }
 
 fn read_codextheme_archive(source: &Path) -> Result<(Value, Vec<(String, Vec<u8>)>), String> {
-    let metadata = fs::metadata(source)
+    let metadata = fs::symlink_metadata(source)
         .map_err(|error| format!("Could not inspect the selected codextheme package: {error}"))?;
     if !metadata.is_file() || metadata.len() == 0 || metadata.len() > MAX_CODEXTHEME_ARCHIVE_SIZE {
         return Err("The codextheme package is empty or exceeds the 32 MB limit.".to_string());
@@ -596,18 +808,39 @@ fn read_codextheme_archive(source: &Path) -> Result<(Value, Vec<(String, Vec<u8>
         if files.iter().any(|(existing, _)| existing == &name) {
             return Err(format!("Duplicate file in codextheme package: {name}"));
         }
-        if entry.size() == 0 || entry.size() > MAX_THEME_FILE_SIZE {
-            return Err(format!("{name} is empty or exceeds the 16 MB file limit."));
+        let file_limit = if name == "theme.json" {
+            MAX_CODEXTHEME_MANIFEST_SIZE
+        } else {
+            MAX_THEME_FILE_SIZE
+        };
+        if entry.size() == 0 || entry.size() > file_limit {
+            return Err(if name == "theme.json" {
+                "theme.json is empty or exceeds the 256 KB file limit.".to_string()
+            } else {
+                format!("{name} is empty or exceeds the 16 MB file limit.")
+            });
         }
         total_size = total_size.saturating_add(entry.size());
         if total_size > MAX_THEME_TOTAL_SIZE {
             return Err("The codextheme package exceeds the 32 MB extracted limit.".to_string());
         }
-        let mut bytes = Vec::with_capacity(entry.size() as usize);
-        entry.read_to_end(&mut bytes).map_err(|error| {
-            format!("Could not read {name} from the codextheme package: {error}")
-        })?;
-        if bytes.len() as u64 != entry.size() {
+        let declared_size = entry.size();
+        let mut bytes = Vec::with_capacity(declared_size.min(file_limit) as usize);
+        entry
+            .by_ref()
+            .take(file_limit + 1)
+            .read_to_end(&mut bytes)
+            .map_err(|error| {
+                format!("Could not read {name} from the codextheme package: {error}")
+            })?;
+        if bytes.len() as u64 > file_limit {
+            return Err(if name == "theme.json" {
+                "theme.json exceeds the 256 KB file limit.".to_string()
+            } else {
+                format!("{name} exceeds the 16 MB file limit.")
+            });
+        }
+        if bytes.len() as u64 != declared_size {
             return Err(format!(
                 "The extracted size of {name} did not match its archive metadata."
             ));
@@ -630,12 +863,18 @@ fn read_codextheme_archive(source: &Path) -> Result<(Value, Vec<(String, Vec<u8>
         .find(|(name, _)| name == "theme.json")
         .map(|(_, bytes)| bytes)
         .ok_or_else(|| "codextheme package is missing theme.json.".to_string())?;
-    if manifest_bytes.len() > 256 * 1024 {
+    if manifest_bytes.len() as u64 > MAX_CODEXTHEME_MANIFEST_SIZE {
         return Err("theme.json must not exceed 256 KB.".to_string());
     }
     let manifest: Value = serde_json::from_slice(manifest_bytes)
         .map_err(|error| format!("theme.json is not valid JSON: {error}"))?;
     validate_codextheme_manifest(&manifest)?;
+    let background = files
+        .iter()
+        .find(|(name, _)| name == "background.jpg")
+        .map(|(_, bytes)| bytes.as_slice())
+        .ok_or_else(|| "codextheme package is missing background.jpg.".to_string())?;
+    validate_codextheme_jpeg(background)?;
     Ok((manifest, files))
 }
 
@@ -909,13 +1148,13 @@ fn status_from_script(app: &AppHandle, deep: bool) -> Result<RuntimeSnapshot, St
             }
         }
         _ if script.session == "applying" => ("applying", "Applying theme"),
-        _ if script.session == "stale" || script.session == "unknown" => {
-            ("error", "Theme runtime requires attention")
-        }
         _ if script.codex_running => (
             "restart-required",
             "Codex is running without an active theme session",
         ),
+        _ if script.session == "stale" || script.session == "unknown" => {
+            ("error", "Theme runtime requires attention")
+        }
         _ => ("connected", "Codex theme runtime is ready"),
     };
 
@@ -1018,7 +1257,10 @@ pub async fn import_codextheme_package(app: AppHandle) -> Result<ThemeLibraryRes
 
 #[cfg(test)]
 mod codextheme_tests {
-    use super::{validate_codextheme_entry, validate_codextheme_manifest};
+    use super::{
+        valid_css_color, valid_https_url, validate_codextheme_entry, validate_codextheme_jpeg,
+        validate_codextheme_manifest,
+    };
     use serde_json::json;
 
     fn valid_manifest() -> serde_json::Value {
@@ -1063,6 +1305,103 @@ mod codextheme_tests {
         let mut invalid_art = manifest;
         invalid_art["art"]["focusX"] = json!(1.5);
         assert!(validate_codextheme_manifest(&invalid_art).is_err());
+    }
+
+    #[test]
+    fn rejects_control_characters_and_multiline_copy() {
+        for (field, value) in [
+            ("name", "Quiet\nStudio"),
+            ("description", "Quiet\u{0000}Studio"),
+            ("tagline", "Quiet\rStudio"),
+            ("promoTitle", "Quiet\u{0085}Studio"),
+        ] {
+            let mut manifest = valid_manifest();
+            manifest[field] = json!(value);
+            assert!(
+                validate_codextheme_manifest(&manifest).is_err(),
+                "{field} should reject control characters"
+            );
+        }
+    }
+
+    #[test]
+    fn accepts_only_bounded_css_color_syntax() {
+        for color in [
+            "#fff",
+            "#ffff",
+            "#112233",
+            "#11223344",
+            "rgb(0, 127, 255)",
+            "rgb(0%, 50%, 100%)",
+            "rgba(196, 120, 128, .22)",
+        ] {
+            assert!(valid_css_color(color), "{color} should be accepted");
+        }
+        for color in [
+            "red",
+            "var(--secret)",
+            "url(https://example.com/a)",
+            "#12",
+            "#ggg",
+            "rgb(256, 0, 0)",
+            "rgba(0, 0, 0, 2)",
+        ] {
+            assert!(!valid_css_color(color), "{color} should be rejected");
+        }
+    }
+
+    #[test]
+    fn validates_https_urls_without_credentials_or_ambiguous_hosts() {
+        assert!(valid_https_url(
+            "https://codexthemes.app/themes/quiet-studio?source=app#details"
+        ));
+        assert!(valid_https_url("https://example.com:8443/theme"));
+        for url in [
+            "http://codexthemes.app/theme",
+            "https://user@example.com/theme",
+            "https://example.com\\@attacker.invalid/",
+            "https://-example.com/theme",
+            "https://example.com:0/theme",
+            "https://example.com/\nnext",
+        ] {
+            assert!(!valid_https_url(url), "{url:?} should be rejected");
+        }
+    }
+
+    fn jpeg_with_dimensions(width: u16, height: u16) -> Vec<u8> {
+        vec![
+            0xff,
+            0xd8,
+            0xff,
+            0xe0,
+            0x00,
+            0x02,
+            0xff,
+            0xc0,
+            0x00,
+            0x08,
+            0x08,
+            (height >> 8) as u8,
+            height as u8,
+            (width >> 8) as u8,
+            width as u8,
+            0x01,
+            0xff,
+            0xd9,
+        ]
+    }
+
+    #[test]
+    fn validates_jpeg_magic_dimensions_and_pixel_limits() {
+        assert_eq!(
+            validate_codextheme_jpeg(&jpeg_with_dimensions(2560, 1440)).unwrap(),
+            (2560, 1440)
+        );
+        assert!(validate_codextheme_jpeg(b"not a jpeg").is_err());
+        assert!(validate_codextheme_jpeg(&[0xff, 0xd8, 0xff, 0xc0, 0x00]).is_err());
+        assert!(validate_codextheme_jpeg(&jpeg_with_dimensions(0, 1440)).is_err());
+        assert!(validate_codextheme_jpeg(&jpeg_with_dimensions(16_385, 100)).is_err());
+        assert!(validate_codextheme_jpeg(&jpeg_with_dimensions(10_000, 6_000)).is_err());
     }
 }
 
@@ -1338,6 +1677,133 @@ pub async fn apply_theme(app: AppHandle, theme_id: String) -> Result<OperationRe
     })
     .await
     .map_err(|error| format!("Apply theme task failed: {error}"))?
+}
+
+#[tauri::command]
+pub async fn set_window_border_enabled(
+    app: AppHandle,
+    enabled: bool,
+    style: Option<String>,
+) -> Result<OperationResult, String> {
+    let style = style.unwrap_or_else(|| "classic-rainbow".to_string());
+    if !matches!(
+        style.as_str(),
+        "classic-rainbow" | "candy-stripe" | "ocean" | "monochrome"
+    ) {
+        return Err("Unsupported animated window border style.".to_string());
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        let root = ensure_installed_runtime(&app)?;
+        let enabled_arg = if enabled { "true" } else { "false" };
+        let output = run_script(
+            &root,
+            "set-window-border-macos.sh",
+            &["--enabled", enabled_arg, "--style", &style],
+        )?;
+        if !output.status.success() {
+            return Ok(OperationResult {
+                ok: false,
+                verified: false,
+                status: "error".to_string(),
+                message: output_error("set-window-border-macos.sh", &output),
+            });
+        }
+        let snapshot = status_from_script(&app, false)?;
+        let applied_now = snapshot.status == "active";
+        Ok(OperationResult {
+            ok: true,
+            verified: true,
+            status: snapshot.status,
+            message: match (enabled, applied_now) {
+                (true, true) => format!("Animated window border enabled ({style})."),
+                (false, true) => "Animated window border disabled.".to_string(),
+                (true, false) => {
+                    format!(
+                        "Animated window border ({style}) will appear the next time a theme runs."
+                    )
+                }
+                (false, false) => "Animated window border disabled.".to_string(),
+            },
+        })
+    })
+    .await
+    .map_err(|error| format!("Window border task failed: {error}"))?
+}
+
+#[tauri::command]
+pub async fn set_window_effects_enabled(
+    app: AppHandle,
+    enabled: bool,
+) -> Result<OperationResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let root = ensure_installed_runtime(&app)?;
+        let enabled_arg = if enabled { "true" } else { "false" };
+        let output = run_script(
+            &root,
+            "set-window-effects-macos.sh",
+            &["--enabled", enabled_arg],
+        )?;
+        if !output.status.success() {
+            return Ok(OperationResult {
+                ok: false,
+                verified: false,
+                status: "error".to_string(),
+                message: output_error("set-window-effects-macos.sh", &output),
+            });
+        }
+        let snapshot = status_from_script(&app, false)?;
+        let applied_now = snapshot.status == "active";
+        Ok(OperationResult {
+            ok: true,
+            verified: true,
+            status: snapshot.status,
+            message: match (enabled, applied_now) {
+                (true, true) => "Codex window effects enabled.".to_string(),
+                (false, true) => "Codex window effects paused.".to_string(),
+                (true, false) => {
+                    "Codex window effects will appear the next time a theme runs.".to_string()
+                }
+                (false, false) => "Codex window effects paused.".to_string(),
+            },
+        })
+    })
+    .await
+    .map_err(|error| format!("Window effects task failed: {error}"))?
+}
+
+#[tauri::command]
+pub async fn set_pixel_cat_enabled(
+    app: AppHandle,
+    enabled: bool,
+) -> Result<OperationResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let root = ensure_installed_runtime(&app)?;
+        let enabled_arg = if enabled { "true" } else { "false" };
+        let output = run_script(&root, "set-pixel-cat-macos.sh", &["--enabled", enabled_arg])?;
+        if !output.status.success() {
+            return Ok(OperationResult {
+                ok: false,
+                verified: false,
+                status: "error".to_string(),
+                message: output_error("set-pixel-cat-macos.sh", &output),
+            });
+        }
+        let snapshot = status_from_script(&app, false)?;
+        let applied_now = snapshot.status == "active";
+        Ok(OperationResult {
+            ok: true,
+            verified: true,
+            status: snapshot.status,
+            message: match (enabled, applied_now) {
+                (true, true) => "Pixel cat companion enabled.".to_string(),
+                (false, true) => "Pixel cat companion disabled.".to_string(),
+                (true, false) => "Pixel cat will appear the next time a theme runs.".to_string(),
+                (false, false) => "Pixel cat companion disabled.".to_string(),
+            },
+        })
+    })
+    .await
+    .map_err(|error| format!("Pixel cat task failed: {error}"))?
 }
 
 #[tauri::command]

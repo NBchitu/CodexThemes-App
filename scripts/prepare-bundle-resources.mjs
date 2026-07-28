@@ -3,8 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const projectRoot = path.resolve(appRoot, "..");
-const sourceRoot = path.join(projectRoot, "macos");
+const sourceRoot = path.join(appRoot, "resources", "macos-engine");
 const stagingRoot = path.join(appRoot, "src-tauri", ".bundle-resources", "macos-engine");
 
 const copyResource = async (name) => {

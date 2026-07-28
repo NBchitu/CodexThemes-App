@@ -9,7 +9,7 @@ import { CreatePage } from "./features/create/CreatePage";
 import { SettingsPage } from "./features/settings/SettingsPage";
 import { platformBridge } from "./services/platform";
 import { useAppStore } from "./store/app-store";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "./lib/cn";
 import type { CodexThemePackageSummary } from "./domain/theme";
 
@@ -27,6 +27,11 @@ export default function App() {
   const setThemes = useAppStore((state) => state.setThemes);
   const setPreferredTheme = useAppStore((state) => state.setPreferredTheme);
   const appearance = useAppStore((state) => state.preferences.appearance);
+  const restoreLastTheme = useAppStore((state) => state.preferences.restoreLastTheme);
+  const preferredThemeId = useAppStore((state) => state.preferredThemeId);
+  const nativeHost = useAppStore((state) => state.runtime.isNativeHost);
+  const autoRestoreInFlight = useRef(false);
+  const autoRestoreAttempted = useRef(false);
   const selectedTheme = themes.find((theme) => theme.id === selectedThemeId) ?? null;
 
   useEffect(() => {
@@ -64,6 +69,66 @@ export default function App() {
     refresh();
     return () => { disposed = true; window.clearInterval(timer); };
   }, [runtimeStatus, setNotice, setPreferredTheme, setRuntime]);
+
+  useEffect(() => {
+    if (!nativeHost || runtimeStatus === "applying" || runtimeStatus === "restoring") return;
+    let disposed = false;
+    const refresh = () => {
+      void platformBridge.getRuntimeStatus().then((runtime) => {
+        if (!disposed) setRuntime(runtime);
+      }).catch(() => {
+        // The foreground actions surface errors. Background reconciliation is
+        // deliberately quiet so a transient status read does not spam users.
+      });
+    };
+    const timer = window.setInterval(refresh, 10000);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+    };
+  }, [nativeHost, runtimeStatus, setRuntime]);
+
+  useEffect(() => {
+    if (runtimeStatus === "active" || runtimeStatus === "connected") {
+      autoRestoreAttempted.current = false;
+    }
+  }, [runtimeStatus]);
+
+  useEffect(() => {
+    if (!nativeHost || !restoreLastTheme || !preferredThemeId
+      || runtimeStatus !== "restart-required" || autoRestoreInFlight.current
+      || autoRestoreAttempted.current) return;
+    autoRestoreInFlight.current = true;
+    autoRestoreAttempted.current = true;
+    setRuntime({
+      status: "applying",
+      activeThemeId: null,
+      message: "Restoring the last verified theme…",
+      isNativeHost: true,
+    });
+    void platformBridge.applyTheme(preferredThemeId).then((result) => {
+      setRuntime({
+        status: result.status,
+        activeThemeId: result.verified ? preferredThemeId : null,
+        message: result.message,
+        isNativeHost: true,
+      });
+      if (!result.ok) setNotice(result.message);
+    }).catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      setRuntime({ status: "error", activeThemeId: null, message, isNativeHost: true });
+      setNotice(message);
+    }).finally(() => {
+      autoRestoreInFlight.current = false;
+    });
+  }, [
+    nativeHost,
+    preferredThemeId,
+    restoreLastTheme,
+    runtimeStatus,
+    setNotice,
+    setRuntime,
+  ]);
 
   useEffect(() => {
     let disposed = false;

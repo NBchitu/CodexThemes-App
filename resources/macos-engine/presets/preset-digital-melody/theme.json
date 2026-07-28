@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "preset-digital-melody",
+  "name": "数字旋律",
+  "brandSubtitle": "CODEX DREAM SKIN",
+  "tagline": "让青蓝旋律与粉色光谱，陪你把灵感写成代码。",
+  "projectPrefix": "选择项目 · ",
+  "projectLabel": "♪  选择项目",
+  "statusText": "DIGITAL MELODY ONLINE",
+  "quote": "CODE IN RHYTHM, CREATE IN COLOR",
+  "image": "background.jpg",
+  "colors": {
+    "background": "#edf9fd",
+    "panel": "#f9fcff",
+    "panelAlt": "#e4f3fa",
+    "accent": "#28bfc8",
+    "accentAlt": "#64dce0",
+    "secondary": "#e98ac8",
+    "highlight": "#9feaf5",
+    "text": "#17495f",
+    "muted": "#567887",
+    "line": "rgba(40, 191, 200, .24)"
+  },
+  "promoTitle": "让每一次编码都有自己的旋律",
+  "promoSub": "CodexThemes.app",
+  "promoUrl": "https://codexthemes.app"
+}

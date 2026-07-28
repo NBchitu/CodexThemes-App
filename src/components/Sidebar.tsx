@@ -4,6 +4,7 @@ import { cn } from "../lib/cn";
 import { t } from "../i18n/en";
 import { platformBridge } from "../services/platform";
 import { useAppStore, type AppRoute } from "../store/app-store";
+import { WindowEffectsControl } from "./WindowEffectsControl";
 
 const items: Array<{ route: AppRoute; label: ReturnType<typeof t>; icon: typeof Compass }> = [
   { route: "library", label: t("myThemes"), icon: Library },
@@ -26,12 +27,12 @@ export function Sidebar() {
     setRuntime({ ...runtime, status: "applying", message: "Launching Codex…" });
     try {
       const themeId = runtime.activeThemeId ?? preferredThemeId;
-      const result = themeId && runtime.status !== "active"
+      // Applying an already-selected theme is also the canonical launch path:
+      // the native runtime reuses a verified CDP session when available and
+      // otherwise starts Codex once with the required loopback flags.
+      const result = themeId
         ? await platformBridge.applyTheme(themeId)
         : await platformBridge.openCodex();
-      if (result.ok && themeId && runtime.status !== "active") {
-        await platformBridge.openCodex();
-      }
       if (result.verified && themeId) setPreferredTheme(themeId);
       setRuntime({
         status: result.status,
@@ -82,6 +83,7 @@ export function Sidebar() {
           <strong>{isLaunching ? "Launching…" : "Run Codex"}</strong>
         </button>
       </div>
+      <WindowEffectsControl />
       <div className="runtime-card" aria-live="polite">
         <div className="runtime-heading">
           <span className={cn("status-dot", runtime.status === "active" && "status-success")} />

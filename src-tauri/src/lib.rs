@@ -11,7 +11,8 @@ use macos_bridge::{
     apply_theme, delete_theme, export_theme_creation_guide, get_runtime_status,
     import_codextheme_package, import_codextheme_path, import_theme_folder,
     initialize_theme_library, inspect_codextheme_package, open_codex, open_project_home,
-    open_theme_gallery, open_themes_folder, restore_original, update_theme_settings,
+    open_theme_gallery, open_themes_folder, restore_original, set_pixel_cat_enabled,
+    set_window_border_enabled, set_window_effects_enabled, update_theme_settings,
 };
 
 static PENDING_CODEXTHEME_PATHS: OnceLock<Mutex<VecDeque<String>>> = OnceLock::new();
@@ -60,6 +61,9 @@ pub fn run() {
             update_theme_settings,
             restore_original,
             open_codex,
+            set_window_border_enabled,
+            set_window_effects_enabled,
+            set_pixel_cat_enabled,
             initialize_theme_library,
             import_theme_folder,
             import_codextheme_package,

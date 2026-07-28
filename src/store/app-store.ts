@@ -3,12 +3,18 @@ import type { RuntimeSnapshot, Theme } from "../domain/theme";
 import { themes as initialThemes } from "../domain/themes";
 
 export type AppRoute = "discover" | "library" | "create" | "settings";
+export type WindowBorderStyle = "classic-rainbow" | "candy-stripe" | "ocean" | "monochrome";
 
-interface Preferences {
+export interface Preferences {
   launchAtLogin: boolean;
   startMinimized: boolean;
   restoreLastTheme: boolean;
   autoUpdateThemes: boolean;
+  effectsEnabled: boolean;
+  effectsDiscoverySeen: boolean;
+  windowBorderEnabled: boolean;
+  windowBorderStyle: WindowBorderStyle;
+  pixelCatEnabled: boolean;
   appearance: "system" | "light" | "dark";
 }
 
@@ -31,7 +37,20 @@ interface AppState {
 
 const storedPreferences = (): Partial<Preferences> => {
   try {
-    return JSON.parse(localStorage.getItem("codex-themes.preferences") ?? "{}");
+    const value = JSON.parse(localStorage.getItem("codex-themes.preferences") ?? "{}");
+    if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+    const preferences = { ...value } as Partial<Preferences>;
+    if (
+      typeof preferences.effectsEnabled !== "boolean"
+      && (
+        typeof preferences.windowBorderEnabled === "boolean"
+        || typeof preferences.pixelCatEnabled === "boolean"
+      )
+    ) {
+      preferences.effectsEnabled =
+        preferences.windowBorderEnabled === true || preferences.pixelCatEnabled === true;
+    }
+    return preferences;
   } catch {
     return {};
   }
@@ -42,7 +61,12 @@ const defaultPreferences: Preferences = {
   startMinimized: true,
   restoreLastTheme: true,
   autoUpdateThemes: true,
-  appearance: "system",
+  effectsEnabled: true,
+  effectsDiscoverySeen: false,
+  windowBorderEnabled: true,
+  windowBorderStyle: "classic-rainbow",
+  pixelCatEnabled: true,
+  appearance: "dark",
 };
 
 const storedPreferredTheme = (): string | null => {
