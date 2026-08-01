@@ -1,6 +1,6 @@
 [package]
 name = "codex-themes-desktop"
-version = "0.1.4"
+version = "0.1.5"
 description = "A third-party graphical theme manager for the Codex desktop application"
 authors = ["Codex Themes contributors"]
 license = "MIT"

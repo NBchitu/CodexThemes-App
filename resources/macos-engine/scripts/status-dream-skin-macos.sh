@@ -85,11 +85,14 @@ injector_identity_matches() {
   [ -n "$actual_start" ] && [ "$actual_start" = "$expected_start" ]
 }
 
-# Codex process: cheap name match only.  26.707 renamed Codex.app to
-# ChatGPT.app, while older installs still expose the former process name.
+# Codex process: cheap name match only. New Electron builds truncate `comm`
+# to the executable path in `ps`, while `ucomm` retains ChatGPT/Codex. Avoid
+# pgrep -x here because it no longer sees the current app reliably.
 CURRENT_UID="$(/usr/bin/id -u)"
-if /usr/bin/pgrep -U "$CURRENT_UID" -x ChatGPT >/dev/null 2>&1 \
-  || /usr/bin/pgrep -U "$CURRENT_UID" -x Codex >/dev/null 2>&1; then
+if /bin/ps -axo uid=,ucomm= 2>/dev/null | /usr/bin/awk -v uid="$CURRENT_UID" '
+  $1 == uid && ($2 == "ChatGPT" || $2 == "Codex") { found=1; exit }
+  END { exit(found ? 0 : 1) }
+'; then
   CODEX_RUNNING="true"
 fi
 

@@ -351,17 +351,22 @@ async function listAppTargets(port) {
   }
 }
 
-async function probeSession(session) {
+export async function probeSession(session) {
   return session.evaluate(`(() => {
     const markers = {
-      shell: Boolean(document.querySelector('main.main-surface')),
+      legacyShell: Boolean(document.querySelector('main.main-surface')),
+      main: Boolean(document.querySelector('main')),
       sidebar: Boolean(document.querySelector('aside.app-shell-left-panel')),
       composer: Boolean(document.querySelector('.composer-surface-chrome')),
-      main: Boolean(document.querySelector('[role="main"]')),
+      navigation: Boolean(document.querySelector('[role="navigation"]')),
     };
+    const legacyCodex = markers.legacyShell && markers.sidebar;
+    const currentCodex = markers.main && markers.sidebar &&
+      markers.composer && markers.navigation;
     return {
       markers,
-      codex: markers.shell && markers.sidebar,
+      shellVersion: legacyCodex ? 'legacy' : currentCodex ? 'current' : null,
+      codex: legacyCodex || currentCodex,
     };
   })()`);
 }
@@ -738,7 +743,8 @@ function operationUiExpression(action, token, state = "loading", message = "") {
     const issuedAt = (value) => Number(String(value).split(":")[1]) || 0;
     const positionInMainArea = (host) => {
       const main = document.querySelector("main.main-surface") ||
-        document.querySelector('[role="main"]') || document.documentElement;
+        document.querySelector('main') || document.querySelector('[role="main"]') ||
+        document.documentElement;
       const rect = main.getBoundingClientRect();
       const top = Math.max(0, rect.top);
       const left = Math.max(0, rect.left);
@@ -966,7 +972,8 @@ async function verifySession(
       siblingCandidates.find((item) => item?.visible) ??
       null;
     const projectButton = box(home?.querySelector('.group\\\\/project-selector > button'));
-    const shell = box(document.querySelector('main.main-surface'));
+    const shell = box(document.querySelector('main.main-surface') ||
+      document.querySelector('main'));
     const composer = box(document.querySelector('.composer-surface-chrome'));
     const sidebar = box(document.querySelector('aside.app-shell-left-panel'));
     const chrome = document.getElementById('codex-dream-skin-chrome');
@@ -1243,9 +1250,14 @@ export function earlyPayloadFor(payload, revision) {
     const install = () => {
       if (window[generationKey] !== generation) { stop(); return true; }
       if (!document.documentElement) return false;
-      const shell = document.querySelector('main.main-surface');
+      const legacyShell = document.querySelector('main.main-surface');
+      const main = legacyShell || document.querySelector('main');
       const sidebar = document.querySelector('aside.app-shell-left-panel');
-      if (!shell || !sidebar) return false;
+      const composer = document.querySelector('.composer-surface-chrome');
+      const navigation = document.querySelector('[role="navigation"]');
+      const legacyCodex = Boolean(legacyShell && sidebar);
+      const currentCodex = Boolean(main && sidebar && composer && navigation);
+      if (!legacyCodex && !currentCodex) return false;
       stop();
       ${payload};
       window[appliedKey] = generation;

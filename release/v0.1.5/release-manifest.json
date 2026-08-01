@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "appVersion": "0.1.5",
+  "publishedAt": null,
+  "signing": "ad-hoc",
+  "notarized": false,
+  "artifacts": [
+    {
+      "platform": "macos",
+      "architecture": "arm64",
+      "filename": "Codex-Themes-v0.1.5-macOS-Apple-Silicon-arm64.dmg",
+      "sha256": "69696b1e94f5051fc998b1694f0af2e6d7520ac2dd13aab98debeb002011204b",
+      "size": 13008599
+    },
+    {
+      "platform": "macos",
+      "architecture": "x86_64",
+      "filename": "Codex-Themes-v0.1.5-macOS-Intel-x86_64.dmg",
+      "sha256": "c2494b5c364cd6b90105e71082d23098f5a8676e83b2596559e91c95a4993e4b",
+      "size": 13232345
+    }
+  ]
+}

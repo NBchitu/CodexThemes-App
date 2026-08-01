@@ -85,11 +85,11 @@ Add diagnostics, local logs, a copyable privacy-reviewed report, Open Logs Folde
 
 ## Native build artifact
 
-The current v0.1.4 release-candidate artifacts are generated at:
+The current v0.1.5 release-candidate artifacts are generated at:
 
 ```text
-desktop-app/release/v0.1.4/Codex-Themes-v0.1.4-macOS-Apple-Silicon-arm64.dmg
-desktop-app/release/v0.1.4/Codex-Themes-v0.1.4-macOS-Intel-x86_64.dmg
+desktop-app/release/v0.1.5/Codex-Themes-v0.1.5-macOS-Apple-Silicon-arm64.dmg
+desktop-app/release/v0.1.5/Codex-Themes-v0.1.5-macOS-Intel-x86_64.dmg
 ```
 
 The saved local artifact is ad-hoc signed for development. Public distribution still requires an Apple Developer ID Application certificate, hardened runtime configuration, notarization, and stapling.

@@ -18,17 +18,19 @@ Codex Themes Desktop 是一款面向 macOS 的图形化 Codex 主题管理工具
 
 ## 下载 Codex Themes Desktop
 
-> **最新版本：v0.1.4。** 请根据 Mac 的芯片类型下载对应 DMG 安装包。
+> **最新版本：v0.1.5。** 请根据 Mac 的芯片类型下载对应 DMG 安装包。
 
 | 系统与芯片 | 下载 | 状态 |
 | --- | --- | --- |
-| macOS · Apple Silicon（M1 / M2 / M3 / M4 及后续 Apple 芯片） | **[下载 Apple Silicon 版 DMG](https://github.com/NBchitu/CodexThemes-App/releases/latest/download/Codex-Themes-v0.1.4-macOS-Apple-Silicon-arm64.dmg)** | 已发布 |
-| macOS · Intel 芯片 | **[下载 Intel 版 DMG](https://github.com/NBchitu/CodexThemes-App/releases/latest/download/Codex-Themes-v0.1.4-macOS-Intel-x86_64.dmg)** | 已发布 |
+| macOS · Apple Silicon（M1 / M2 / M3 / M4 及后续 Apple 芯片） | **[下载 Apple Silicon 版 DMG](https://github.com/NBchitu/CodexThemes-App/releases/latest/download/Codex-Themes-v0.1.5-macOS-Apple-Silicon-arm64.dmg)** | 已发布 |
+| macOS · Intel 芯片 | **[下载 Intel 版 DMG](https://github.com/NBchitu/CodexThemes-App/releases/latest/download/Codex-Themes-v0.1.5-macOS-Intel-x86_64.dmg)** | 已发布 |
 | Windows · x64 | 暂未开放下载 | **极速开发中** |
 
 不知道自己的 Mac 使用哪种芯片？点击屏幕左上角 ** → 关于本机**：看到“芯片 Apple M…”请选择 Apple Silicon 版；看到“处理器 Intel…”请选择 Intel 版。
 
 也可以前往 [GitHub Releases](https://github.com/NBchitu/CodexThemes-App/releases) 查看全部版本、更新说明和 SHA-256 文件校验信息。当前社区版本使用 Ad-hoc 完整性签名，尚未经过 Apple 公证；如果 macOS 阻止首次运行，请前往 **系统设置 → 隐私与安全性**，点击 **仍要打开**。
+
+v0.1.5 已适配 Codex 26.727 系列的新界面结构，并继续兼容使用 `main.main-surface` 的旧版 Codex。该版本同时修复了新版中主题颜色已生效但背景图片未显示、运行状态误判以及重新打开 Codex 后无法自动恢复主题的问题。
 
 ## 界面预览
 

@@ -90,6 +90,9 @@
   if (previous?.mediaHandler && previous?.mediaQuery) {
     try { previous.mediaQuery.removeEventListener("change", previous.mediaHandler); } catch {}
   }
+  if (previous?.motionHandler && previous?.motionQuery) {
+    try { previous.motionQuery.removeEventListener("change", previous.motionHandler); } catch {}
+  }
   previous?.catController?.dispose?.();
 
   const cssString = (value) => JSON.stringify(String(value ?? ""));
@@ -249,7 +252,7 @@
     if (!root.classList.contains("codex-dream-skin")) {
       const samples = [
         body,
-        document.querySelector("main.main-surface"),
+        document.querySelector("main.main-surface") || document.querySelector("main"),
         document.querySelector("aside.app-shell-left-panel"),
       ].filter(Boolean);
       let votesLight = 0;
@@ -685,12 +688,32 @@
   };
   const catController = createCatController();
 
+  const syncElectricBorderMotion = (frame = document.getElementById(WINDOW_FRAME_ID)) => {
+    const svg = frame?.querySelector(".dream-electric-border");
+    if (!svg || typeof svg.pauseAnimations !== "function") return;
+    let reduced = false;
+    try {
+      reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch {}
+    const shouldPause = frame?.dataset.style !== "monochrome"
+      || document.visibilityState === "hidden"
+      || reduced;
+    try {
+      if (shouldPause) svg.pauseAnimations();
+      else svg.unpauseAnimations();
+    } catch {}
+  };
+
   const syncRouteState = (shell, { layout = false } = {}) => {
     metrics.routePasses += 1;
     const root = document.documentElement;
     if (!root) return;
     shell ||= root.getAttribute(SHELL_ATTR) || resolvedShell();
     const shellMain = document.querySelector("main.main-surface") || document.querySelector("main");
+    for (const candidate of document.querySelectorAll("main.dream-skin-main")) {
+      if (candidate !== shellMain) candidate.classList.remove("dream-skin-main");
+    }
+    shellMain?.classList.add("dream-skin-main");
     const homeIndicator = document.querySelector('[data-testid="home-icon"]');
     const home = homeIndicator?.closest('[role="main"]') ||
       [...document.querySelectorAll('[role="main"]')].find((candidate) =>
@@ -719,21 +742,34 @@
         windowFrame.innerHTML = `
           <svg class="dream-electric-filter-defs" width="0" height="0" aria-hidden="true">
             <defs>
-              <filter id="dream-electric-edge-x" x="-4%" y="-100%" width="108%" height="300%"
+              <filter id="dream-electric-edge" x="-4%" y="-6%" width="108%" height="112%"
                 color-interpolation-filters="sRGB">
-                <feTurbulence type="fractalNoise" baseFrequency="0.014 0.22"
-                  numOctaves="2" seed="7" result="noise" />
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="4"
-                  xChannelSelector="R" yChannelSelector="B" />
-              </filter>
-              <filter id="dream-electric-edge-y" x="-100%" y="-4%" width="300%" height="108%"
-                color-interpolation-filters="sRGB">
-                <feTurbulence type="fractalNoise" baseFrequency="0.22 0.014"
-                  numOctaves="2" seed="11" result="noise" />
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="4"
-                  xChannelSelector="R" yChannelSelector="B" />
+                <feTurbulence type="fractalNoise" baseFrequency="0.02"
+                  numOctaves="4" seed="7" stitchTiles="stitch" result="noise" />
+                <feOffset in="noise" result="moving-noise">
+                  <animate attributeName="dx" values="0;-360" dur="11s"
+                    repeatCount="indefinite" calcMode="linear" />
+                  <animate attributeName="dy" values="0;-220" dur="17s"
+                    repeatCount="indefinite" calcMode="linear" />
+                </feOffset>
+                <feDisplacementMap in="SourceGraphic" in2="moving-noise" scale="22"
+                  xChannelSelector="R" yChannelSelector="B" result="displaced" />
+                <feGaussianBlur in="displaced" stdDeviation="3.2" result="wide-glow" />
+                <feGaussianBlur in="displaced" stdDeviation="0.8" result="soft-glow" />
+                <feMerge>
+                  <feMergeNode in="wide-glow" />
+                  <feMergeNode in="soft-glow" />
+                  <feMergeNode in="displaced" />
+                </feMerge>
               </filter>
             </defs>
+          </svg>
+          <svg class="dream-electric-border" aria-hidden="true">
+            <rect class="dream-electric-steady" pathLength="1000"></rect>
+            <g filter="url(#dream-electric-edge)">
+              <rect class="dream-electric-core" pathLength="1000"></rect>
+              <rect class="dream-electric-sparks" pathLength="1000"></rect>
+            </g>
           </svg>
           <i></i><i></i><i></i><i></i>`;
         document.body.appendChild(windowFrame);
@@ -745,6 +781,7 @@
           ? EFFECTS.windowBorderStyle
           : "classic-rainbow",
       );
+      syncElectricBorderMotion(windowFrame);
     } else {
       windowFrame?.remove();
     }
@@ -841,6 +878,7 @@
     for (const name of THEME_VARIABLES) document.documentElement?.style.removeProperty(name);
     document.querySelectorAll(".dream-skin-home").forEach((node) => node.classList.remove("dream-skin-home"));
     document.querySelectorAll(".dream-skin-home-shell").forEach((node) => node.classList.remove("dream-skin-home-shell"));
+    document.querySelectorAll("main.dream-skin-main").forEach((node) => node.classList.remove("dream-skin-main"));
     document.querySelectorAll(".dream-skin-home-utility").forEach((node) => node.classList.remove("dream-skin-home-utility"));
     document.getElementById(STYLE_ID)?.remove();
     document.getElementById(CHROME_ID)?.remove();
@@ -864,6 +902,9 @@
     }
     if (state?.mediaHandler && state?.mediaQuery) {
       try { state.mediaQuery.removeEventListener("change", state.mediaHandler); } catch {}
+    }
+    if (state?.motionHandler && state?.motionQuery) {
+      try { state.motionQuery.removeEventListener("change", state.motionHandler); } catch {}
     }
     state?.catController?.dispose?.();
     if (state?.artUrl) URL.revokeObjectURL(state.artUrl);
@@ -933,6 +974,12 @@
     mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     mediaHandler = () => scheduleEnsure({ root: true, route: true });
   } catch {}
+  let motionQuery = null;
+  let motionHandler = null;
+  try {
+    motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    motionHandler = () => syncElectricBorderMotion();
+  } catch {}
   const navigationApi = window.navigation && typeof window.navigation.addEventListener === "function"
     ? window.navigation : null;
   const navigationHandler = navigationApi
@@ -942,6 +989,7 @@
     const root = document.documentElement;
     if (!root) return;
     setAttribute(root, "data-dream-document-hidden", document.visibilityState === "hidden");
+    syncElectricBorderMotion();
     if (document.visibilityState === "hidden") {
       catController.pause();
       return;
@@ -962,6 +1010,8 @@
     visibilityHandler,
     mediaQuery,
     mediaHandler,
+    motionQuery,
+    motionHandler,
     navigation: navigationApi,
     navigationHandler,
     artUrl,
@@ -1005,6 +1055,9 @@
   }
   if (mediaHandler && mediaQuery) {
     mediaQuery.addEventListener("change", mediaHandler);
+  }
+  if (motionHandler && motionQuery) {
+    motionQuery.addEventListener("change", motionHandler);
   }
   if (navigationHandler && navigationApi) {
     navigationApi.addEventListener("navigate", navigationHandler);
