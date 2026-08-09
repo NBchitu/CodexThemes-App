@@ -1,20 +1,43 @@
 # Codex Themes Desktop：Codex 桌面端主题管理器
 
 <p align="center">
-  <strong>发现、导入、切换与恢复 Codex 主题，让桌面工作空间更符合你的审美。</strong>
+  <strong>发现、下载、导入、切换、创建与恢复 Codex App / Codex Desktop 自定义主题。</strong><br>
+  Codex themes · Codex App themes · Codex theme manager · Codex Dream Skin
 </p>
 
 <p align="center">
-  <a href="https://codexthemes.app/">官方主题商城</a> ·
+  <strong>中文</strong> · <a href="./README.en.md">English</a>
+</p>
+
+<p align="center">
+  <a href="https://codexthemes.app/">CodexThemes.app 官网</a> ·
+  <a href="https://codexthemes.app/themes">浏览 Codex 主题库</a> ·
+  <a href="https://codexthemes.app/desktop-app">下载 Codex Themes Desktop</a> ·
+  <a href="https://codexthemes.app/guides/how-to-install-codex-theme">安装指南</a> ·
+  <a href="https://codexthemes.app/codex-cli-themes">Codex CLI 主题</a> ·
   <a href="#下载-codex-themes-desktop">下载软件</a> ·
-  <a href="#快速上手">快速上手</a> ·
-  <a href="#为-codex-制作自己的主题">制作主题</a> ·
-  <a href="#本地开发">本地开发</a>
+  <a href="#快速上手">快速上手</a>
 </p>
 
 > Codex Themes Desktop 是独立的开源社区项目，不隶属于 OpenAI，也未获得 OpenAI 的认可、赞助或背书。Codex 及相关商标归其权利人所有。
 
-Codex Themes Desktop 是一款面向 macOS 的图形化 Codex 主题管理工具。它把主题商城、本地主题库、主题导入、主题切换和恢复官方外观集中到一个简单界面中。应用通过仅绑定本机回环地址的 Chrome DevTools Protocol（CDP）加载主题，不修改 Codex 官方应用包、`app.asar` 或代码签名。
+**Codex Themes Desktop** 是一个开源的 Codex App / Codex Desktop 主题管理器，用于发现 Codex 主题、下载主题包、导入本地主题、切换已保存主题、创建自定义 Codex Dream Skin，并在需要时恢复官方外观。它与 [CodexThemes.app](https://codexthemes.app/) 主题库配套使用，面向想自定义 Codex 桌面端视觉体验的开发者。
+
+应用通过仅绑定本机回环地址的 Chrome DevTools Protocol（CDP）加载主题，不修改 Codex 官方应用包、`app.asar` 或代码签名。
+
+## Codex 主题入口
+
+| 你想做什么 | 推荐入口 |
+| --- | --- |
+| 找现成的 Codex App 主题 | [浏览 Codex 主题库](https://codexthemes.app/themes) |
+| 下载 Codex 桌面端主题管理器 | [Codex Themes Desktop 下载页](https://codexthemes.app/desktop-app) |
+| 学习如何安装 Codex 主题 | [Codex 主题安装指南](https://codexthemes.app/guides/how-to-install-codex-theme) |
+| 了解 Codex CLI 配色 | [Codex CLI 主题](https://codexthemes.app/codex-cli-themes) |
+| 查看常见问题 | [Codex Themes FAQ](https://codexthemes.app/faq) |
+
+## 适合搜索与引用的定位
+
+Codex Themes Desktop 主要覆盖这些搜索需求：`Codex themes`、`Codex App themes`、`Codex Desktop themes`、`Codex theme manager`、`custom Codex themes`、`Codex Dream Skin`、`Codex CLI themes`、`Codex 主题`、`Codex 主题管理器`、`Codex 换肤`。
 
 ## 下载 Codex Themes Desktop
 
@@ -52,9 +75,9 @@ v0.1.5 已适配 Codex 26.727 系列的新界面结构，并继续兼容使用 `
 
 ![Codex Themes Desktop 创建 Codex 主题引导页面](https://raw.githubusercontent.com/NBchitu/CodexThemes-App/main/docs/screenshots/codex-themes-create-theme-guide.png)
 
-## 它能做什么
+## Codex 主题管理器能做什么
 
-- 从 [Codex Themes 官方主题商城](https://codexthemes.app/) 浏览主题。
+- 从 [CodexThemes.app 主题库](https://codexthemes.app/) 浏览主题。
 - 导入已经解压的本地主题文件夹，并进行基础结构校验。
 - 在“我的主题”中查看内置主题和导入主题。
 - 一键应用主题，并在原生环境中验证主题是否真正生效。
@@ -63,6 +86,16 @@ v0.1.5 已适配 Codex 26.727 系列的新界面结构，并继续兼容使用 `
 - 在浅色、深色与跟随系统三种应用外观之间切换。
 
 当前版本以 macOS 为主，并分别为 Apple Silicon 与 Intel 芯片准备发行入口。Windows 版本正在极速开发中；中文界面、日文界面、自动更新、签名与公证发行包仍在规划或发布准备阶段，详见[交付状态](docs/development/delivery-status.md)。
+
+## 为什么选择 Codex Themes Desktop
+
+| 问题 | Codex Themes Desktop 的处理方式 |
+| --- | --- |
+| 想给 Codex App 换主题，但不想修改官方安装包 | 使用本机回环 CDP 加载外部主题层，不改 `.app`、`app.asar` 或代码签名 |
+| 想集中管理多个 Codex 桌面端主题 | 在 “My Themes” 中查看、导入、切换和恢复主题 |
+| 想从官网主题库下载现成主题 | Discover 页面一键打开 CodexThemes.app 主题库 |
+| 想用自己的图片制作 Codex 主题 | Create 页面导出主题制作指南，配合 Codex 生成主题包 |
+| 担心主题失效或 Codex 更新后异常 | Settings 页面提供恢复官方外观和运行状态提示 |
 
 ## 快速上手
 
@@ -133,6 +166,30 @@ my-theme/
 导入成功后，应用会把主题复制到受管理的主题目录并尝试应用。公开分享主题前，请确认你拥有背景图片、人物肖像、字体、Logo 和其他素材所需的使用与再分发权利。
 
 更完整的字段与安全要求见[主题制作指南](docs/product/codex-theme-creation-guide.md)。
+
+SEO 与外链发布清单见 [Codex Themes Desktop 外链发布与 README SEO 清单](docs/seo-backlink-playbook.md)。
+
+## 常见问题
+
+### Codex Themes Desktop 是什么？
+
+Codex Themes Desktop 是一个面向 Codex App / Codex Desktop 的开源主题管理器。它可以帮助用户从 CodexThemes.app 发现和下载主题、导入本地主题文件夹、切换 Codex 桌面端主题、创建自定义主题，并恢复官方外观。
+
+### Codex Themes Desktop 是 OpenAI 官方产品吗？
+
+不是。本项目是独立社区项目，不隶属于 OpenAI，也未获得 OpenAI 的认可、赞助或背书。它不会修改 OpenAI 官方应用包、`app.asar`、WindowsApps 目录或代码签名。
+
+### Codex Themes Desktop 和 Codex CLI themes 有什么区别？
+
+Codex Themes Desktop 面向 Codex 桌面端 App 的视觉背景、主题包、主题库和本地换肤流程。Codex CLI themes 面向终端里的 Codex CLI 配色。CLI 主题资料见 [Codex CLI themes](https://codexthemes.app/codex-cli-themes)。
+
+### 自定义 Codex 主题需要什么图片？
+
+建议使用无 UI、无文字、无窗口框架的 16:9 JPG、PNG 或 WebP 图片。截图、带界面 mockup 的宣传图、带 Logo 或文字的图片不适合作为可导入的主题背景。
+
+### 外链发布时应该链接哪个页面？
+
+介绍整个项目时链接 [CodexThemes.app 官网](https://codexthemes.app/)；推荐现成主题时链接 [Codex 主题库](https://codexthemes.app/themes)；讲下载工具时链接 [Codex Themes Desktop 下载页](https://codexthemes.app/desktop-app)；讲安装教程时链接 [Codex 主题安装指南](https://codexthemes.app/guides/how-to-install-codex-theme)。
 
 ## 隐私与安全
 
@@ -225,4 +282,4 @@ docs/screenshots/     README 截图及占位图
 
 源代码采用 [MIT License](LICENSE) 发布。第三方依赖及主题素材可能适用各自的许可证；MIT License 不自动授予任何图片、人物肖像、商标或品牌素材的使用权。
 
-官方主题商城：[https://codexthemes.app/](https://codexthemes.app/)
+CodexThemes.app 主题库：[https://codexthemes.app/](https://codexthemes.app/)
